@@ -90,6 +90,7 @@ export default function Preview({ html, markdown, onScroll, externalScrollRatio,
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
 <style>
 html, body {
   margin: 0;

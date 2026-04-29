@@ -9,7 +9,7 @@ import type { ImageProcessingOptions, RenderResult } from '../shared/types';
 import { DEFAULT_IMAGE_OPTIONS } from '../shared/types';
 
 const katex = require('katex');
-const katexCss = fs.readFileSync(require.resolve('katex/dist/katex.min.css'), 'utf-8');
+const mathjaxNode = require('mathjax-node');
 const texmathPlugin = texmath.use(katex);
 const md = new MarkdownIt({
   html: true,
@@ -17,13 +17,119 @@ const md = new MarkdownIt({
   typographer: true,
 }).use(footnote).use(texmathPlugin);
 
+// Configure mathjax-node: disable fontCache to avoid id attrs (WeChat strips SVG id)
+mathjaxNode.config({
+  MathJax: {
+    tex2jax: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+  },
+});
+
 // Normalize LaTeX delimiters: \[...\] → $$...$$, \(...\) → $...$
 function normalizeLatexDelimiters(md: string): string {
-  // \[...\] → $$...$$ (display math)
   md = md.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `$$${formula}$$`);
-  // \(...\) → $...$ (inline math)
   md = md.replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => `$${formula}$`);
   return md;
+}
+
+// Render a single formula as SVG using mathjax-node (no id attributes)
+function renderFormulaSvg(latex: string, display: boolean): Promise<string> {
+  return new Promise((resolve, reject) => {
+    mathjaxNode.typeset({
+      math: latex,
+      format: 'TeX',
+      svg: true,
+      useFontCache: false,
+      linebreaks: !display,
+      display: display,
+      speakText: false,
+    }, (data: any) => {
+      if (data.errors) {
+        reject(new Error(data.errors.join(', ')));
+      } else {
+        resolve(data.svg);
+      }
+    });
+  });
+}
+
+// Replace KaTeX HTML output with mdnice-compatible SVG structure
+async function replaceKatexWithSvg(html: string): Promise<string> {
+  html = await replaceDisplayMath(html);
+  html = await replaceInlineMath(html);
+  return html;
+}
+
+async function replaceDisplayMath(html: string): Promise<string> {
+  // texmath wraps display math in <section><eqn>...</eqn></section>
+  const displayRe = /<section><eqn[^>]*>([\s\S]*?)<\/eqn><\/section>/g;
+  const matches = [...html.matchAll(displayRe)];
+
+  for (const match of matches) {
+    const latex = extractLatex(match[1]);
+    if (!latex) continue;
+    try {
+      const svg = await renderFormulaSvg(latex, true);
+      // Match mdnice structure: <span class="span-block-equation"><section class="block-equation">
+      const escapedLatex = latex.replace(/"/g, '&quot;').replace(/\n/g, '&#10;');
+      const wrapped = `<span class="span-block-equation" style="cursor:pointer"><section class="block-equation" data-formula="${escapedLatex}" style="text-align: center; overflow-x: auto; overflow-y: auto; display: block;">${svg}</section></span>`;
+      html = html.replace(match[0], wrapped);
+    } catch {
+      // Keep original KaTeX HTML as fallback
+    }
+  }
+
+  // Handle <eqn> without <section> wrapper (edge case)
+  const bareDisplayRe = /<eqn[^>]*>([\s\S]*?)<\/eqn>/g;
+  const bareMatches = [...html.matchAll(bareDisplayRe)];
+  for (const match of bareMatches) {
+    const latex = extractLatex(match[1]);
+    if (!latex) continue;
+    try {
+      const svg = await renderFormulaSvg(latex, true);
+      const escapedLatex = latex.replace(/"/g, '&quot;').replace(/\n/g, '&#10;');
+      const wrapped = `<span class="span-block-equation" style="cursor:pointer"><section class="block-equation" data-formula="${escapedLatex}" style="text-align: center; overflow-x: auto; overflow-y: auto; display: block;">${svg}</section></span>`;
+      html = html.replace(match[0], wrapped);
+    } catch {
+      // Keep original
+    }
+  }
+
+  return html;
+}
+
+async function replaceInlineMath(html: string): Promise<string> {
+  const inlineRe = /<eq>([\s\S]*?)<\/eq>/g;
+  const matches = [...html.matchAll(inlineRe)];
+
+  for (const match of matches) {
+    const latex = extractLatex(match[1]);
+    if (!latex) continue;
+    try {
+      const svg = await renderFormulaSvg(latex, false);
+      // Inline math: wrap in <span class="span-inline-equation">
+      const escapedLatex = latex.replace(/"/g, '&quot;');
+      const wrapped = `<span class="span-inline-equation" style="cursor:pointer" data-formula="${escapedLatex}">${svg}</span>`;
+      html = html.replace(match[0], wrapped);
+    } catch {
+      // Keep original KaTeX HTML as fallback
+    }
+  }
+
+  return html;
+}
+
+// Extract LaTeX source from KaTeX HTML output
+function extractLatex(katexHtml: string): string | null {
+  const annotRe = /<annotation[^>]*>([\s\S]*?)<\/annotation>/;
+  const m = katexHtml.match(annotRe);
+  if (m) return m[1];
+
+  const labelRe = /aria-label="([^"]*)"/;
+  const lm = katexHtml.match(labelRe);
+  if (lm) return lm[1];
+
+  const text = katexHtml.replace(/<[^>]+>/g, '').trim();
+  return text.length > 0 ? text : null;
 }
 
 // Post-process markdown-it output to add mdnice-compatible HTML structure
@@ -39,7 +145,6 @@ function postProcessHtml(html: string): string {
 
   // 3. Wrap <li> content in <section> for mdnice list styling
   html = html.replace(/<li>([\s\S]*?)<\/li>/g, (match, content: string) => {
-    // Skip if already has section
     if (content.includes('<section')) return match;
     return `<li><section>${content}</section></li>`;
   });
@@ -48,20 +153,19 @@ function postProcessHtml(html: string): string {
 }
 
 function addMultiquoteClasses(html: string): string {
-  // Track blockquote nesting depth and add multiquote-N classes
   let depth = 0;
   let result = '';
   let i = 0;
 
   while (i < html.length) {
-    if (html.substring(i, i + 13) === '<blockquote>') {
+    if (html.substring(i, i + 12) === '<blockquote>') {
       depth++;
       result += `<blockquote class="multiquote-${depth}">`;
-      i += 13;
-    } else if (html.substring(i, i + 14) === '</blockquote>') {
+      i += 12;
+    } else if (html.substring(i, i + 13) === '</blockquote>') {
       result += '</blockquote>';
       if (depth > 0) depth--;
-      i += 14;
+      i += 13;
     } else {
       result += html[i];
       i++;
@@ -130,8 +234,15 @@ export async function renderMarkdown(
     }
   }
 
-  // Render markdown to HTML
+  // Render markdown to HTML (includes KaTeX via texmath)
   let htmlBody = md.render(processedMd);
+
+  // Replace KaTeX HTML with SVG in mdnice-compatible structure
+  try {
+    htmlBody = await replaceKatexWithSvg(htmlBody);
+  } catch (err: any) {
+    warnings.push(`Formula SVG conversion failed: ${err.message}`);
+  }
 
   // Add mdnice-compatible structure
   htmlBody = postProcessHtml(htmlBody);
@@ -143,10 +254,8 @@ export async function renderMarkdown(
 <body><section id="nice">${htmlBody}</section></body>
 </html>`;
 
-  // Combine user CSS + KaTeX CSS for inlining
-  const combinedCss = katexCss + '\n' + css;
-
-  const inlinedHtml = juice.inlineContent(fullHtml, combinedCss, {
+  // Only inline user CSS (SVG formulas don't need KaTeX CSS)
+  const inlinedHtml = juice.inlineContent(fullHtml, css, {
     inlinePseudoElements: false,
     preserveImportant: true,
   });

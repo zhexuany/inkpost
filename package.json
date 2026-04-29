@@ -46,6 +46,7 @@
     "markdown-it": "^14.1.0",
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-texmath": "^0.9.7",
+    "mathjax-node": "^2.1.1",
     "monaco-editor": "^0.52.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
