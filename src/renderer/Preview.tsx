@@ -18,10 +18,9 @@ export default function Preview({ html }: PreviewProps) {
 <head>
 <meta charset="utf-8">
 <style>
-body {
+html, body {
   margin: 0;
-  padding: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  padding: 0;
   background: #fff;
 }
 </style>
@@ -35,7 +34,7 @@ body {
     <iframe
       ref={iframeRef}
       className="preview-iframe"
-      sandbox="allow-same-origin"
+      sandbox="allow-same-origin allow-scripts"
       title="Preview"
     />
   );

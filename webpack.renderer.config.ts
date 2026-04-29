@@ -19,6 +19,16 @@ const config: Configuration = {
   resolve: {
     extensions: ['.tsx', '.ts', '.js', '.jsx'],
   },
+  devServer: {
+    webSocketServer: {
+      options: {
+        port: 9000,
+      },
+    },
+    client: {
+      webSocketURL: 'ws://localhost:9000/ws',
+    },
+  },
 };
 
 export default config;
