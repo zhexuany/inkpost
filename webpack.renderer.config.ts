@@ -27,6 +27,7 @@ const config: Configuration = {
     },
     client: {
       webSocketURL: 'ws://localhost:9001/ws',
+      reconnect: false,
     },
   },
 };
