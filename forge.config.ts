@@ -29,6 +29,8 @@ const config: ForgeConfig = {
   ],
   plugins: [
     new WebpackPlugin({
+      port: 9001,
+      devContentSecurityPolicy: "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:; img-src * data: blob:; style-src 'self' 'unsafe-inline' https:; connect-src 'self' ws://localhost:* http://localhost:* https: http:; font-src 'self' https:;",
       mainConfig: './webpack.main.config.ts',
       renderer: {
         config: './webpack.renderer.config.ts',

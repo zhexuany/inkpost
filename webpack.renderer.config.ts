@@ -26,7 +26,7 @@ const config: Configuration = {
       },
     },
     client: {
-      webSocketURL: 'ws://localhost:9000/ws',
+      webSocketURL: 'ws://localhost:9001/ws',
     },
   },
 };
