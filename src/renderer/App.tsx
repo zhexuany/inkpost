@@ -6,6 +6,7 @@ import StatusBar from './StatusBar';
 import { presetThemes } from '../shared/presets';
 import { scanCSS, type CSSWarning } from '../shared/css-scanner';
 import type { RenderResult, InkPostTheme } from '../shared/types';
+import { t, setLang, getLang, type Lang } from '../shared/i18n';
 
 const SAMPLE_MD = `# 欢迎使用墨帖 InkPost
 
@@ -65,6 +66,9 @@ export default function App() {
   const [themes, setThemes] = useState<InkPostTheme[]>(presetThemes);
   const [activeThemeId, setActiveThemeId] = useState<string>(presetThemes[0].id);
   const [showCssPanel, setShowCssPanel] = useState(false);
+  const [recentFiles, setRecentFiles] = useState<string[]>([]);
+  const [showRecentMenu, setShowRecentMenu] = useState(false);
+  const [lang, setLangState] = useState<Lang>(getLang());
   const [renderResult, setRenderResult] = useState<RenderResult | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
@@ -87,9 +91,35 @@ export default function App() {
         const customThemes = savedThemes.filter(t => !presetThemes.some(p => p.id === t.id));
         setThemes([...presetThemes, ...customThemes]);
         setActiveThemeId(savedId);
+
+        // Crash recovery: check for saved draft
+        const draft = await window.inkpost.loadDraft();
+        if (draft && draft.content) {
+          const age = Math.round((Date.now() - draft.timestamp) / 1000);
+          const confirmed = window.confirm(
+            `检测到未保存的草稿（${age} 秒前），是否恢复？`
+          );
+          if (confirmed) {
+            setMarkdown(draft.content);
+            if (draft.filePath) setCurrentFilePath(draft.filePath);
+          }
+          await window.inkpost.clearDraft();
+        }
+
+        // Load recent files
+        const files = await window.inkpost.getRecentFiles();
+        setRecentFiles(files);
       } catch { /* first launch, use defaults */ }
     })();
   }, []);
+
+  // Auto-save draft every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      window.inkpost.saveDraft({ content: markdown, filePath: currentFilePath });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [markdown, currentFilePath]);
 
   // Scan CSS for warnings when theme changes
   useEffect(() => {
@@ -142,9 +172,13 @@ export default function App() {
   const handleSave = useCallback(async () => {
     if (currentFilePath) {
       await window.inkpost.saveFile(currentFilePath, markdown);
+      await window.inkpost.clearDraft();
     } else {
       const newPath = await window.inkpost.saveFileAs(markdown);
-      if (newPath) setCurrentFilePath(newPath);
+      if (newPath) {
+        setCurrentFilePath(newPath);
+        await window.inkpost.clearDraft();
+      }
     }
   }, [currentFilePath, markdown]);
 
@@ -175,11 +209,32 @@ export default function App() {
 
   // Listen for file opened from menu
   useEffect(() => {
-    window.inkpost.onFileOpened((data) => {
+    window.inkpost.onFileOpened(async (data) => {
       setMarkdown(data.content);
       setCurrentFilePath(data.path);
+      await window.inkpost.addRecentFile(data.path);
+      const files = await window.inkpost.getRecentFiles();
+      setRecentFiles(files);
     });
   }, []);
+
+  const handleOpenRecent = useCallback(async (filePath: string) => {
+    try {
+      const content = await window.inkpost.readFile(filePath);
+      setMarkdown(content);
+      setCurrentFilePath(filePath);
+      await window.inkpost.addRecentFile(filePath);
+      const files = await window.inkpost.getRecentFiles();
+      setRecentFiles(files);
+      setShowRecentMenu(false);
+    } catch { /* file may have been deleted */ }
+  }, []);
+
+  const handleLangChange = useCallback(() => {
+    const next = lang === 'zh' ? 'en' : 'zh';
+    setLang(next);
+    setLangState(next);
+  }, [lang]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -201,10 +256,25 @@ export default function App() {
     <div className="app">
       <div className="toolbar">
         <div className="toolbar-left">
-          <button onClick={handleOpen} title="打开文件 (Ctrl+O)">打开</button>
-          <button onClick={handleSave} title="保存 (Ctrl+S)">保存</button>
+          <button onClick={handleOpen} title="Ctrl+O">{t('toolbar.open')}</button>
+          <div className="recent-wrapper">
+            <button onClick={() => setShowRecentMenu(!showRecentMenu)}>
+              {t('toolbar.recent')}
+            </button>
+            {showRecentMenu && recentFiles.length > 0 && (
+              <div className="recent-menu">
+                {recentFiles.map((f, i) => (
+                  <div key={i} className="recent-item" onClick={() => handleOpenRecent(f)}>
+                    {f.split(/[/\\]/).pop()}
+                    <span className="recent-path">{f}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={handleSave} title="Ctrl+S">{t('toolbar.save')}</button>
           <span className="file-name">
-            {currentFilePath ? currentFilePath.split(/[/\\]/).pop() : '未保存'}
+            {currentFilePath ? currentFilePath.split(/[/\\]/).pop() : t('toolbar.unsaved')}
           </span>
         </div>
         <div className="toolbar-right">
@@ -212,15 +282,18 @@ export default function App() {
             value={activeThemeId}
             onChange={(e) => handleThemeChange(e.target.value)}
           >
-            {themes.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+            {themes.map(th => (
+              <option key={th.id} value={th.id}>{th.name}</option>
             ))}
           </select>
           <button onClick={() => setShowCssPanel(!showCssPanel)}>
-            {showCssPanel ? '隐藏样式' : '编辑样式'}
+            {showCssPanel ? t('toolbar.hideStyle') : t('toolbar.editStyle')}
           </button>
-          <button className="copy-btn" onClick={handleCopyClick} title="复制到剪贴板 (Ctrl+Shift+C)">
-            复制
+          <button className="copy-btn" onClick={handleCopyClick} title="Ctrl+Shift+C">
+            {t('toolbar.copy')}
+          </button>
+          <button onClick={handleLangChange} className="lang-btn" title="Toggle language">
+            {lang === 'zh' ? 'EN' : '中'}
           </button>
         </div>
       </div>

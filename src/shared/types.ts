@@ -26,6 +26,7 @@ export interface StoreSchema {
   imageOptions: ImageProcessingOptions;
   autoSave: boolean;
   windowBounds: { x: number; y: number; width: number; height: number };
+  draft: { content: string; filePath: string | null; timestamp: number } | null;
 }
 
 export const DEFAULT_IMAGE_OPTIONS: ImageProcessingOptions = {

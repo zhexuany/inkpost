@@ -35,6 +35,13 @@ const api = {
   // Store — files
   getRecentFiles: (): Promise<string[]> => ipcRenderer.invoke('store:getRecentFiles'),
   addRecentFile: (filePath: string): Promise<void> => ipcRenderer.invoke('store:addRecentFile', filePath),
+
+  // Draft
+  saveDraft: (data: { content: string; filePath: string | null }): Promise<void> =>
+    ipcRenderer.invoke('draft:save', data),
+  loadDraft: (): Promise<{ content: string; filePath: string | null; timestamp: number } | null> =>
+    ipcRenderer.invoke('draft:load'),
+  clearDraft: (): Promise<void> => ipcRenderer.invoke('draft:clear'),
 };
 
 contextBridge.exposeInMainWorld('inkpost', api);

@@ -31,6 +31,11 @@ export interface InkPostAPI {
   // Store — files
   getRecentFiles: () => Promise<string[]>;
   addRecentFile: (filePath: string) => Promise<void>;
+
+  // Draft
+  saveDraft: (data: { content: string; filePath: string | null }) => Promise<void>;
+  loadDraft: () => Promise<{ content: string; filePath: string | null; timestamp: number } | null>;
+  clearDraft: () => Promise<void>;
 }
 
 declare global {

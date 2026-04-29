@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { t } from '../shared/i18n';
 
 interface StatusBarProps {
   wordCount: number;
@@ -14,16 +15,16 @@ export default function StatusBar({ wordCount, imageCount, totalSizeKB, warnings
   return (
     <div className="status-bar">
       <div className="status-left">
-        {isRendering && <span className="status-indicator">渲染中...</span>}
-        <span>{wordCount} 字</span>
-        <span>{imageCount} 张图片</span>
+        {isRendering && <span className="status-indicator">{t('status.rendering')}</span>}
+        <span>{wordCount} {t('status.words')}</span>
+        <span>{imageCount} {t('status.images')}</span>
         <span>{totalSizeKB} KB</span>
       </div>
       <div className="status-right">
         {warnings.length > 0 && (
           <>
             <button className="warning-btn" onClick={() => setShowWarnings(!showWarnings)}>
-              {warnings.length} 个警告
+              {warnings.length} {t('status.warnings')}
             </button>
             {showWarnings && (
               <div className="warning-popup">

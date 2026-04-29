@@ -21,6 +21,7 @@ const store = new Store<StoreSchema>({
     imageOptions: DEFAULT_IMAGE_OPTIONS,
     autoSave: true,
     windowBounds: { x: 100, y: 100, width: 1200, height: 800 },
+    draft: null,
   },
 });
 
@@ -198,4 +199,18 @@ ipcMain.handle('store:addRecentFile', (_event, filePath: string) => {
 
 ipcMain.handle('store:getAutoSave', () => {
   return store.get('autoSave', true);
+});
+
+// --- IPC: Draft (auto-save & crash recovery) ---
+
+ipcMain.handle('draft:save', (_event, data: { content: string; filePath: string | null }) => {
+  store.set('draft', { ...data, timestamp: Date.now() });
+});
+
+ipcMain.handle('draft:load', () => {
+  return store.get('draft', null);
+});
+
+ipcMain.handle('draft:clear', () => {
+  store.set('draft', null);
 });

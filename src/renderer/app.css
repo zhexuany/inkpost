@@ -79,10 +79,64 @@ body {
   background: #0055aa !important;
 }
 
+.lang-btn {
+  font-size: 11px !important;
+  font-weight: 600;
+  min-width: 32px;
+  padding: 4px 6px !important;
+  color: #0066CC !important;
+  border-color: #0066CC !important;
+}
+
 .file-name {
   color: #888;
   font-size: 12px;
   max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Recent Files Menu */
+.recent-wrapper {
+  position: relative;
+}
+
+.recent-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #fff;
+  border: 1px solid #d0d8e0;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  min-width: 240px;
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 200;
+}
+
+.recent-item {
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-item:hover {
+  background-color: #e0e8f0;
+}
+
+.recent-item:last-child {
+  border-bottom: none;
+}
+
+.recent-path {
+  font-size: 10px;
+  color: #999;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -145,6 +199,15 @@ body {
   color: #333;
   background: #fff;
   tab-size: 2;
+}
+
+.cm-editor-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.cm-editor-wrapper .cm-editor {
+  height: 100%;
 }
 
 .css-textarea {
