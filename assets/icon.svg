@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0066CC"/>
+      <stop offset="100%" stop-color="#003D7A"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="1024" height="1024" rx="200" fill="url(#bg)"/>
+
+  <!-- Ink drop / nib shape - main body -->
+  <path d="M512 160 Q580 300 620 420 Q660 530 640 620 Q620 720 540 780 Q520 795 512 800 Q504 795 484 780 Q404 720 384 620 Q364 530 404 420 Q444 300 512 160 Z" fill="#FFFFFF" opacity="0.95"/>
+
+  <!-- Pen nib cut -->
+  <path d="M512 520 L490 700 L512 760 L534 700 Z" fill="#0066CC" opacity="0.9"/>
+
+  <!-- Orange accent line - representing the writing stroke -->
+  <path d="M280 600 Q400 560 512 555 Q624 550 744 580 L740 610 Q620 580 512 585 Q404 590 284 625 Z" fill="#FF6600" opacity="0.95"/>
+
+  <!-- Left serif accent -->
+  <path d="M280 600 L220 590 L225 615 L284 625 Z" fill="#FF6600" opacity="0.85"/>
+
+  <!-- Right serif accent -->
+  <path d="M744 580 L804 570 L800 595 L740 610 Z" fill="#FF6600" opacity="0.85"/>
+
+  <!-- Small ink splatter dots -->
+  <circle cx="380" cy="740" r="8" fill="#FFFFFF" opacity="0.5"/>
+  <circle cx="660" cy="720" r="6" fill="#FFFFFF" opacity="0.4"/>
+  <circle cx="420" cy="760" r="4" fill="#FFFFFF" opacity="0.3"/>
+</svg>

@@ -5,15 +5,22 @@ import path from 'path';
 
 const APP_NAME = '墨帖 InkPost';
 
-// Fix macOS menu bar name by patching Electron.app's Info.plist in dev mode
-function patchElectronAppName(): void {
+// Patch Electron.app for dev mode: name, icon, bundle identifier
+function patchElectronApp(): void {
   if (process.platform !== 'darwin') return;
   try {
-    const plistPath = path.resolve(__dirname, 'node_modules/electron/dist/Electron.app/Contents/Info.plist');
+    const appContents = path.resolve(__dirname, 'node_modules/electron/dist/Electron.app/Contents');
+    const plistPath = path.join(appContents, 'Info.plist');
     if (!fs.existsSync(plistPath)) return;
 
+    // 1. Copy our icon into Electron.app, overwriting the default
+    const ourIcon = path.resolve(__dirname, 'assets/icon.icns');
+    if (fs.existsSync(ourIcon)) {
+      fs.copyFileSync(ourIcon, path.join(appContents, 'Resources/electron.icns'));
+    }
+
+    // 2. Patch Info.plist: name, display name, bundle identifier
     let plist = fs.readFileSync(plistPath, 'utf-8');
-    // Replace CFBundleName and CFBundleDisplayName
     plist = plist.replace(
       /<key>CFBundleName<\/key>\s*<string>[^<]*<\/string>/,
       `<key>CFBundleName</key>\n\t<string>${APP_NAME}</string>`
@@ -22,9 +29,17 @@ function patchElectronAppName(): void {
       /<key>CFBundleDisplayName<\/key>\s*<string>[^<]*<\/string>/,
       `<key>CFBundleDisplayName</key>\n\t<string>${APP_NAME}</string>`
     );
+    plist = plist.replace(
+      /<key>CFBundleIdentifier<\/key>\s*<string>[^<]*<\/string>/,
+      `<key>CFBundleIdentifier</key>\n\t<string>com.inkpost.app</string>`
+    );
     fs.writeFileSync(plistPath, plist, 'utf-8');
+
+    // 3. Touch the app bundle to invalidate macOS icon cache
+    const appPath = path.resolve(__dirname, 'node_modules/electron/dist/Electron.app');
+    fs.utimesSync(appPath, new Date(), new Date());
   } catch {
-    // Silently skip if patching fails (e.g. packaged environment)
+    // Silently skip if patching fails
   }
 }
 
@@ -60,7 +75,7 @@ const config: ForgeConfig = {
   ],
   hooks: {
     generateAssets: async () => {
-      patchElectronAppName();
+      patchElectronApp();
     },
   },
   plugins: [
