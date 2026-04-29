@@ -18,6 +18,7 @@ const config: Configuration = {
   externals: {
     sharp: 'commonjs sharp',
     'electron-store': 'commonjs electron-store',
+    katex: 'commonjs katex',
   },
 };
 

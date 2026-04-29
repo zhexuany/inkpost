@@ -1,5 +1,6 @@
 import MarkdownIt from 'markdown-it';
 import footnote from 'markdown-it-footnote';
+import texmath from 'markdown-it-texmath';
 import juice from 'juice';
 import path from 'path';
 import fs from 'fs';
@@ -7,11 +8,23 @@ import sharp from 'sharp';
 import type { ImageProcessingOptions, RenderResult } from '../shared/types';
 import { DEFAULT_IMAGE_OPTIONS } from '../shared/types';
 
+const katex = require('katex');
+const katexCss = fs.readFileSync(require.resolve('katex/dist/katex.min.css'), 'utf-8');
+const texmathPlugin = texmath.use(katex);
 const md = new MarkdownIt({
   html: true,
   linkify: true,
   typographer: true,
-}).use(footnote);
+}).use(footnote).use(texmathPlugin);
+
+// Normalize LaTeX delimiters: \[...\] → $$...$$, \(...\) → $...$
+function normalizeLatexDelimiters(md: string): string {
+  // \[...\] → $$...$$ (display math)
+  md = md.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `$$${formula}$$`);
+  // \(...\) → $...$ (inline math)
+  md = md.replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => `$${formula}$`);
+  return md;
+}
 
 // Post-process markdown-it output to add mdnice-compatible HTML structure
 function postProcessHtml(html: string): string {
@@ -103,7 +116,7 @@ export async function renderMarkdown(
 
   // Process local images to base64
   const imageMatches = [...markdown.matchAll(IMAGE_RE)];
-  let processedMd = markdown;
+  let processedMd = normalizeLatexDelimiters(markdown);
 
   for (const match of imageMatches) {
     const [fullMatch, alt, src] = match;
@@ -130,7 +143,10 @@ export async function renderMarkdown(
 <body><section id="nice">${htmlBody}</section></body>
 </html>`;
 
-  const inlinedHtml = juice.inlineContent(fullHtml, css, {
+  // Combine user CSS + KaTeX CSS for inlining
+  const combinedCss = katexCss + '\n' + css;
+
+  const inlinedHtml = juice.inlineContent(fullHtml, combinedCss, {
     inlinePseudoElements: false,
     preserveImportant: true,
   });
