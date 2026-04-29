@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import Editor from './Editor';
+import Editor, { type EditorHandle } from './Editor';
 import Preview from './Preview';
 import CssEditor from './CssEditor';
 import StatusBar from './StatusBar';
@@ -49,7 +49,11 @@ export default function App() {
   const [isRendering, setIsRendering] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [cssWarnings, setCssWarnings] = useState<CSSWarning[]>([]);
+  const [editorScrollRatio, setEditorScrollRatio] = useState<number | undefined>(undefined);
+  const [previewScrollRatio, setPreviewScrollRatio] = useState<number | undefined>(undefined);
   const renderTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const lastScrollSource = useRef<'editor' | 'preview' | null>(null);
+  const editorRef = useRef<EditorHandle>(null);
 
   const activeTheme = themes.find(t => t.id === activeThemeId) ?? themes[0];
 
@@ -133,6 +137,22 @@ export default function App() {
     setThemes(prev => prev.map(t => t.id === activeThemeId ? { ...t, css } : t));
   }, [activeThemeId]);
 
+  const handleEditorScroll = useCallback((ratio: number) => {
+    lastScrollSource.current = 'editor';
+    setEditorScrollRatio(undefined);
+    setPreviewScrollRatio(ratio);
+  }, []);
+
+  const handlePreviewScroll = useCallback((ratio: number) => {
+    lastScrollSource.current = 'preview';
+    setPreviewScrollRatio(undefined);
+    setEditorScrollRatio(ratio);
+  }, []);
+
+  const handleJumpToLine = useCallback((lineIndex: number) => {
+    editorRef.current?.jumpToLine(lineIndex);
+  }, []);
+
   // Listen for file opened from menu
   useEffect(() => {
     window.inkpost.onFileOpened((data) => {
@@ -187,7 +207,7 @@ export default function App() {
 
       <div className="main-area">
         <div className="editor-pane">
-          <Editor value={markdown} onChange={setMarkdown} />
+          <Editor ref={editorRef} value={markdown} onChange={setMarkdown} onScroll={handleEditorScroll} externalScrollRatio={editorScrollRatio} />
         </div>
 
         {showCssPanel && (
@@ -204,7 +224,7 @@ export default function App() {
         )}
 
         <div className="preview-pane">
-          <Preview html={renderResult?.html ?? ''} />
+          <Preview html={renderResult?.html ?? ''} markdown={markdown} onScroll={handlePreviewScroll} externalScrollRatio={previewScrollRatio} onJumpToLine={handleJumpToLine} />
         </div>
       </div>
 
