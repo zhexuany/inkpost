@@ -167,5 +167,20 @@ li {
 }
 .block-3 p { color: #4a4a4a; text-indent: 0; margin: 0; }
 .block-3 strong { color: #3f3f3f; }
+
+.info { background-color: #f5f0e8; border-left: 4px solid #8b7355; border-radius: 2px; padding: 14px 18px; margin: 18px 0; }
+.info p { color: #4a3a2a; text-indent: 0; margin: 0; }
+
+.tip { background-color: #f0f5ed; border-left: 4px solid #6b8e5a; border-radius: 2px; padding: 14px 18px; margin: 18px 0; }
+.tip p { color: #3a4a2a; text-indent: 0; margin: 0; }
+
+.warning { background-color: #faf5ed; border-left: 4px solid #c4a050; border-radius: 2px; padding: 14px 18px; margin: 18px 0; }
+.warning p { color: #5a4a20; text-indent: 0; margin: 0; }
+
+.danger { background-color: #faf0ef; border-left: 4px solid #b85c50; border-radius: 2px; padding: 14px 18px; margin: 18px 0; }
+.danger p { color: #6b2a2a; text-indent: 0; margin: 0; }
+
+.card { padding: 14px 18px; margin: 18px 0; border-radius: 2px; border: 1px solid #e8e0d4; }
+.card p { margin: 4px 0; text-indent: 0; }
 `.trim(),
 };

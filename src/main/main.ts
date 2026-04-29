@@ -22,6 +22,7 @@ const store = new Store<StoreSchema>({
     autoSave: true,
     windowBounds: { x: 100, y: 100, width: 1200, height: 800 },
     draft: null,
+    contentHistory: [],
   },
 });
 
@@ -124,6 +125,28 @@ ipcMain.handle('render:markdown', async (_event, args: {
 ipcMain.handle('clipboard:writeHTML', async (_event, html: string) => {
   clipboard.writeHTML(html);
   return true;
+});
+
+// --- IPC: Content history ---
+
+ipcMain.handle('history:getList', () => {
+  return store.get('contentHistory', []);
+});
+
+ipcMain.handle('history:getEntry', (_event, id: string) => {
+  const history = store.get('contentHistory', []);
+  return history.find((h: any) => h.id === id) ?? null;
+});
+
+ipcMain.handle('history:saveSnapshot', (_event, data: { content: string; filePath: string | null }) => {
+  const history = store.get('contentHistory', []);
+  history.unshift({
+    id: Date.now().toString(),
+    content: data.content,
+    filePath: data.filePath,
+    timestamp: Date.now(),
+  });
+  store.set('contentHistory', history.slice(0, 20));
 });
 
 // --- IPC: File operations ---

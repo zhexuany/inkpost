@@ -151,5 +151,20 @@ li {
 }
 .block-3 p { color: #666; margin: 0; }
 .block-3 strong { color: #333; }
+
+.info { border-left: 3px solid #576b95; padding: 10px 16px; margin: 14px 0; }
+.info p { color: #444; margin: 0; }
+
+.tip { border-left: 3px solid #4caf50; padding: 10px 16px; margin: 14px 0; }
+.tip p { color: #444; margin: 0; }
+
+.warning { border-left: 3px solid #ff9800; padding: 10px 16px; margin: 14px 0; }
+.warning p { color: #444; margin: 0; }
+
+.danger { border-left: 3px solid #e53935; padding: 10px 16px; margin: 14px 0; }
+.danger p { color: #444; margin: 0; }
+
+.card { padding: 12px 16px; margin: 14px 0; }
+.card p { margin: 4px 0; }
 `.trim(),
 };

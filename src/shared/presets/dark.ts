@@ -164,5 +164,20 @@ li {
 }
 .block-3 p { color: #a0b8d0; margin: 0; }
 .block-3 strong { color: #61afef; }
+
+.info { background-color: #1a2535; border-left: 4px solid #61afef; border-radius: 4px; padding: 14px 16px; margin: 14px 0; }
+.info p { color: #a0c0e0; margin: 0; }
+
+.tip { background-color: #1a2a1a; border-left: 4px solid #98c379; border-radius: 4px; padding: 14px 16px; margin: 14px 0; }
+.tip p { color: #a0d0a0; margin: 0; }
+
+.warning { background-color: #2a2515; border-left: 4px solid #e5c07b; border-radius: 4px; padding: 14px 16px; margin: 14px 0; }
+.warning p { color: #d0c090; margin: 0; }
+
+.danger { background-color: #2a1a1a; border-left: 4px solid #e06c75; border-radius: 4px; padding: 14px 16px; margin: 14px 0; }
+.danger p { color: #e0a0a0; margin: 0; }
+
+.card { padding: 14px 16px; margin: 14px 0; border-radius: 4px; border: 1px solid #3a3f47; }
+.card p { margin: 4px 0; }
 `.trim(),
 };

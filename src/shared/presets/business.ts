@@ -170,5 +170,20 @@ li {
 }
 .block-3 p { color: #444; margin: 0; }
 .block-3 strong { color: #1a1a1a; }
+
+.info { background-color: #eaf2f8; border-left: 4px solid #1a5276; border-radius: 2px; padding: 14px 16px; margin: 14px 0; }
+.info p { color: #2c4050; margin: 0; }
+
+.tip { background-color: #eafaf1; border-left: 4px solid #1e8449; border-radius: 2px; padding: 14px 16px; margin: 14px 0; }
+.tip p { color: #1a4a2a; margin: 0; }
+
+.warning { background-color: #fef9e7; border-left: 4px solid #d4ac0d; border-radius: 2px; padding: 14px 16px; margin: 14px 0; }
+.warning p { color: #7d6608; margin: 0; }
+
+.danger { background-color: #fdedec; border-left: 4px solid #cb4335; border-radius: 2px; padding: 14px 16px; margin: 14px 0; }
+.danger p { color: #78281f; margin: 0; }
+
+.card { padding: 14px 16px; margin: 14px 0; border-radius: 2px; border: 1px solid #d5dbdb; }
+.card p { margin: 4px 0; }
 `.trim(),
 };

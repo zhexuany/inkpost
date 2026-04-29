@@ -19,12 +19,24 @@ const md = new MarkdownIt({
   typographer: true,
 }).use(footnote).use(texmathPlugin);
 
-// Register ::: block-1/2/3 container syntax (use <section> for WeChat compatibility)
-for (const name of ['block-1', 'block-2', 'block-3']) {
+// Register ::: container syntax (use <section> for WeChat compatibility)
+for (const name of ['block-1', 'block-2', 'block-3', 'info', 'tip', 'warning', 'danger']) {
   md.use(container, name, {
     render(tokens: any, idx: number) {
       if (tokens[idx].nesting === 1) {
         return `<section class="${name}">\n`;
+      }
+      return '</section>\n';
+    },
+  });
+}
+
+// Card containers (image-text layout)
+for (const name of ['card-left', 'card-right']) {
+  md.use(container, name, {
+    render(tokens: any, idx: number) {
+      if (tokens[idx].nesting === 1) {
+        return `<section class="card ${name}">\n`;
       }
       return '</section>\n';
     },

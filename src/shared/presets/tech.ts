@@ -169,5 +169,20 @@ li {
 }
 .block-3 p { color: #1a3a1a; margin: 0; }
 .block-3 strong { color: #1e8449; }
+
+.info { background-color: #eef5fc; border-left: 4px solid #3498db; border-radius: 4px; padding: 14px 16px; margin: 14px 0; }
+.info p { color: #1a3a5a; margin: 0; }
+
+.tip { background-color: #eafaf1; border-left: 4px solid #27ae60; border-radius: 4px; padding: 14px 16px; margin: 14px 0; }
+.tip p { color: #1a4a2a; margin: 0; }
+
+.warning { background-color: #fef9e7; border-left: 4px solid #f39c12; border-radius: 4px; padding: 14px 16px; margin: 14px 0; }
+.warning p { color: #7d6608; margin: 0; }
+
+.danger { background-color: #fdedec; border-left: 4px solid #e74c3c; border-radius: 4px; padding: 14px 16px; margin: 14px 0; }
+.danger p { color: #78281f; margin: 0; }
+
+.card { padding: 14px 16px; margin: 14px 0; border-radius: 4px; border: 1px solid #ecf0f1; }
+.card p { margin: 4px 0; }
 `.trim(),
 };

@@ -27,6 +27,7 @@ export interface StoreSchema {
   autoSave: boolean;
   windowBounds: { x: number; y: number; width: number; height: number };
   draft: { content: string; filePath: string | null; timestamp: number } | null;
+  contentHistory: { id: string; content: string; filePath: string | null; timestamp: number }[];
 }
 
 export const DEFAULT_IMAGE_OPTIONS: ImageProcessingOptions = {

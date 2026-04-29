@@ -13,6 +13,12 @@ const api = {
   // Clipboard
   copyToClipboard: (html: string) => ipcRenderer.invoke('clipboard:writeHTML', html),
 
+  // Content history
+  getContentHistory: () => ipcRenderer.invoke('history:getList'),
+  getContentHistoryEntry: (id: string) => ipcRenderer.invoke('history:getEntry', id),
+  saveContentSnapshot: (data: { content: string; filePath: string | null }) =>
+    ipcRenderer.invoke('history:saveSnapshot', data),
+
   // File operations
   openFile: () => ipcRenderer.invoke('file:open'),
   saveFile: (filePath: string, content: string) =>

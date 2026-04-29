@@ -180,5 +180,20 @@ li {
 }
 .block-3 p { color: #444; margin: 0; }
 .block-3 strong { color: #1a1a1a; }
+
+.info { background-color: #e8f4fd; border-left: 4px solid #576b95; border-radius: 4px; padding: 14px 16px; margin: 16px 0; }
+.info p { color: #2c4a6b; margin: 0; }
+
+.tip { background-color: #edf7ed; border-left: 4px solid #4caf50; border-radius: 4px; padding: 14px 16px; margin: 16px 0; }
+.tip p { color: #2e5a2e; margin: 0; }
+
+.warning { background-color: #fff8e1; border-left: 4px solid #ff9800; border-radius: 4px; padding: 14px 16px; margin: 16px 0; }
+.warning p { color: #6d4c00; margin: 0; }
+
+.danger { background-color: #fde8e8; border-left: 4px solid #e53935; border-radius: 4px; padding: 14px 16px; margin: 16px 0; }
+.danger p { color: #8b1a1a; margin: 0; }
+
+.card { padding: 14px 16px; margin: 16px 0; border-radius: 4px; border: 1px solid #e0e0e0; }
+.card p { margin: 4px 0; }
 `.trim(),
 };

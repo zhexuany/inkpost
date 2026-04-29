@@ -72,6 +72,8 @@ export default function App() {
   const [renderResult, setRenderResult] = useState<RenderResult | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
+  const [contentHistory, setContentHistory] = useState<{ id: string; content: string; filePath: string | null; timestamp: number }[]>([]);
+  const [showContentHistory, setShowContentHistory] = useState(false);
   const [cssWarnings, setCssWarnings] = useState<CSSWarning[]>([]);
   const [editorScrollRatio, setEditorScrollRatio] = useState<number | undefined>(undefined);
   const [previewScrollRatio, setPreviewScrollRatio] = useState<number | undefined>(undefined);
@@ -109,6 +111,10 @@ export default function App() {
         // Load recent files
         const files = await window.inkpost.getRecentFiles();
         setRecentFiles(files);
+
+        // Load content history
+        const history = await window.inkpost.getContentHistory();
+        setContentHistory(history);
       } catch { /* first launch, use defaults */ }
     })();
   }, []);
@@ -180,6 +186,10 @@ export default function App() {
         await window.inkpost.clearDraft();
       }
     }
+    // Save content snapshot
+    await window.inkpost.saveContentSnapshot({ content: markdown, filePath: currentFilePath });
+    const history = await window.inkpost.getContentHistory();
+    setContentHistory(history);
   }, [currentFilePath, markdown]);
 
   const handleThemeChange = useCallback(async (id: string) => {
@@ -235,6 +245,15 @@ export default function App() {
     setLang(next);
     setLangState(next);
   }, [lang]);
+
+  const handleRestoreFromHistory = useCallback(async (id: string) => {
+    const entry = await window.inkpost.getContentHistoryEntry(id);
+    if (entry) {
+      setMarkdown(entry.content);
+      if (entry.filePath) setCurrentFilePath(entry.filePath);
+    }
+    setShowContentHistory(false);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -292,6 +311,23 @@ export default function App() {
           <button className="copy-btn" onClick={handleCopyClick} title="Ctrl+Shift+C">
             {t('toolbar.copy')}
           </button>
+          {contentHistory.length > 0 && (
+            <div className="recent-wrapper">
+              <button onClick={() => setShowContentHistory(!showContentHistory)}>
+                历史
+              </button>
+              {showContentHistory && (
+                <div className="recent-menu">
+                  {contentHistory.map((entry) => (
+                    <div key={entry.id} className="recent-item" onClick={() => handleRestoreFromHistory(entry.id)}>
+                      {entry.content.split('\n')[0].substring(0, 40)}
+                      <span className="recent-path">{new Date(entry.timestamp).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <button onClick={handleLangChange} className="lang-btn" title="Toggle language">
             {lang === 'zh' ? 'EN' : '中'}
           </button>

@@ -12,6 +12,11 @@ export interface InkPostAPI {
   // Clipboard
   copyToClipboard: (html: string) => Promise<boolean>;
 
+  // Content history
+  getContentHistory: () => Promise<{ id: string; content: string; filePath: string | null; timestamp: number }[]>;
+  getContentHistoryEntry: (id: string) => Promise<{ id: string; content: string; filePath: string | null; timestamp: number } | null>;
+  saveContentSnapshot: (data: { content: string; filePath: string | null }) => Promise<void>;
+
   // File operations
   openFile: () => Promise<string | null>;
   saveFile: (filePath: string, content: string) => Promise<boolean>;
