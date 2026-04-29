@@ -28,8 +28,8 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 6px 12px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #ddd;
+  background: #f0f3f7;
+  border-bottom: 1px solid #d0d8e0;
   -webkit-app-region: drag;
   min-height: 38px;
 }
@@ -44,16 +44,18 @@ body {
 
 .toolbar button {
   padding: 4px 12px;
-  border: 1px solid #ccc;
+  border: 1px solid #c0c8d0;
   border-radius: 4px;
   background: #fff;
   cursor: pointer;
   font-size: 12px;
-  color: #333;
+  color: #2A3347;
 }
 
 .toolbar button:hover {
-  background: #e8e8e8;
+  background: #e0e8f0;
+  border-color: #0066CC;
+  color: #0066CC;
 }
 
 .toolbar select {
@@ -67,14 +69,14 @@ body {
 }
 
 .copy-btn {
-  background: #07c160 !important;
+  background: #0066CC !important;
   color: #fff !important;
-  border-color: #07c160 !important;
+  border-color: #0066CC !important;
   font-weight: 500;
 }
 
 .copy-btn:hover {
-  background: #06ad56 !important;
+  background: #0055aa !important;
 }
 
 .file-name {
@@ -188,8 +190,8 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 2px 12px;
-  background: #007acc;
-  color: #fff;
+  background: #1a2030;
+  color: #e0e8f0;
   font-size: 12px;
   min-height: 24px;
 }
@@ -200,13 +202,13 @@ body {
 }
 
 .status-indicator {
-  color: #ffcc00;
+  color: #FF6600;
 }
 
 .warning-btn {
   background: none;
   border: none;
-  color: #ffcc00;
+  color: #FF6600;
   cursor: pointer;
   font-size: 12px;
   text-decoration: underline;
@@ -308,9 +310,9 @@ body {
 }
 
 .modal-footer button.confirm {
-  background: #07c160;
+  background: #0066CC;
   color: #fff;
-  border-color: #07c160;
+  border-color: #0066CC;
   font-weight: 500;
 }
 

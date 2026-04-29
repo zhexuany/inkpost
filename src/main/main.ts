@@ -94,6 +94,8 @@ async function handleOpenFile(): Promise<string | null> {
   return filePath;
 }
 
+app.setName('墨帖 InkPost');
+
 app.whenReady().then(() => {
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
   createWindow();
