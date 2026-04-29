@@ -137,5 +137,37 @@ ul, ol {
 li {
   margin-bottom: 4px;
 }
+
+.block-1 {
+  background-color: #eef5fc;
+  border: 1px solid #c8e0f4;
+  border-left: 4px solid #3498db;
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+.block-1 p { color: #2c3e50; margin: 0; }
+
+.block-2 {
+  background-color: #fdf2f0;
+  border: 1px solid #f0c8c0;
+  border-left: 4px solid #e74c3c;
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+.block-2 p { color: #4a2020; margin: 0; }
+.block-2 strong { color: #c0392b; }
+
+.block-3 {
+  background-color: #f0f8f0;
+  border: 1px solid #c0e0c0;
+  border-left: 4px solid #27ae60;
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+.block-3 p { color: #1a3a1a; margin: 0; }
+.block-3 strong { color: #1e8449; }
 `.trim(),
 };

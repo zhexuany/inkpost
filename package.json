@@ -44,6 +44,7 @@
     "juice": "^11.0.0",
     "katex": "^0.16.45",
     "markdown-it": "^14.1.0",
+    "markdown-it-container": "^4.0.0",
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-texmath": "^0.9.7",
     "mathjax-node": "^2.1.1",

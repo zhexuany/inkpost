@@ -1,6 +1,7 @@
 import MarkdownIt from 'markdown-it';
 import footnote from 'markdown-it-footnote';
 import texmath from 'markdown-it-texmath';
+import container from 'markdown-it-container';
 import juice from 'juice';
 import path from 'path';
 import fs from 'fs';
@@ -11,11 +12,24 @@ import { DEFAULT_IMAGE_OPTIONS } from '../shared/types';
 const katex = require('katex');
 const mathjaxNode = require('mathjax-node');
 const texmathPlugin = texmath.use(katex);
+
 const md = new MarkdownIt({
   html: true,
   linkify: true,
   typographer: true,
 }).use(footnote).use(texmathPlugin);
+
+// Register ::: block-1/2/3 container syntax (use <section> for WeChat compatibility)
+for (const name of ['block-1', 'block-2', 'block-3']) {
+  md.use(container, name, {
+    render(tokens: any, idx: number) {
+      if (tokens[idx].nesting === 1) {
+        return `<section class="${name}">\n`;
+      }
+      return '</section>\n';
+    },
+  });
+}
 
 // Configure mathjax-node: disable fontCache to avoid id attrs (WeChat strips SVG id)
 mathjaxNode.config({
@@ -209,6 +223,40 @@ async function processImage(
   return `data:${mimeType};base64,${buf.toString('base64')}`;
 }
 
+// Convert WeChat-unsafe inline CSS to safe alternatives
+function sanitizeWechatStyles(html: string): string {
+  return html.replace(/style="([^"]*)"/g, (_match, styleContent: string) => {
+    // Split into individual CSS declarations
+    const declarations = styleContent.split(';').map(d => d.trim()).filter(Boolean);
+    const result: string[] = [];
+
+    for (const decl of declarations) {
+      const propLower = decl.split(':')[0].trim().toLowerCase();
+
+      if (propLower === 'background' || propLower === 'background-image') {
+        if (decl.includes('linear-gradient')) {
+          // Extract first color from gradient as solid background-color
+          const colors = decl.match(/rgba?\(\s*\d+[^)]*\)|#[0-9a-fA-F]{3,8}/g);
+          if (colors && colors.length >= 1) {
+            result.push(`background-color: ${colors[0]}`);
+          }
+          // Skip the gradient itself
+          continue;
+        }
+      }
+
+      if (propLower === 'background' && decl.includes('none')) {
+        continue; // Skip "background: none"
+      }
+
+      result.push(decl);
+    }
+
+    const sanitized = result.join('; ');
+    return `style="${sanitized}"`;
+  });
+}
+
 export async function renderMarkdown(
   markdown: string,
   css: string,
@@ -255,10 +303,13 @@ export async function renderMarkdown(
 </html>`;
 
   // Only inline user CSS (SVG formulas don't need KaTeX CSS)
-  const inlinedHtml = juice.inlineContent(fullHtml, css, {
+  let inlinedHtml = juice.inlineContent(fullHtml, css, {
     inlinePseudoElements: false,
     preserveImportant: true,
   });
+
+  // Sanitize inline styles for WeChat compatibility
+  inlinedHtml = sanitizeWechatStyles(inlinedHtml);
 
   // Extract just the #nice content for clipboard
   const niceMatch = inlinedHtml.match(/<section[^>]*id="nice"[^>]*>([\s\S]*)<\/section>/i);

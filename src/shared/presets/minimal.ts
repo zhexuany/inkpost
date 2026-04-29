@@ -126,5 +126,30 @@ ul, ol {
 li {
   margin-bottom: 4px;
 }
+
+.block-1 {
+  border-left: 3px solid #999;
+  padding: 10px 16px;
+  margin: 14px 0;
+  background-color: #fafafa;
+}
+.block-1 p { color: #555; margin: 0; }
+
+.block-2 {
+  border-left: 3px solid #333;
+  padding: 10px 16px;
+  margin: 14px 0;
+  background-color: #f5f5f5;
+}
+.block-2 p { color: #333; margin: 0; }
+.block-2 strong { color: #111; }
+
+.block-3 {
+  border-left: 3px solid #bbb;
+  padding: 10px 16px;
+  margin: 14px 0;
+}
+.block-3 p { color: #666; margin: 0; }
+.block-3 strong { color: #333; }
 `.trim(),
 };

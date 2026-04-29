@@ -135,5 +135,37 @@ ul, ol {
 li {
   margin-bottom: 6px;
 }
+
+.block-1 {
+  background-color: #faf5ed;
+  border: 1px solid #e8dcc8;
+  border-left: 4px solid #8b7355;
+  border-radius: 2px;
+  padding: 14px 18px;
+  margin: 18px 0;
+}
+.block-1 p { color: #5a4a3a; text-indent: 0; margin: 0; }
+
+.block-2 {
+  background-color: #fdf6ee;
+  border: 1px solid #e8d4b8;
+  border-left: 4px solid #b8860b;
+  border-radius: 2px;
+  padding: 14px 18px;
+  margin: 18px 0;
+}
+.block-2 p { color: #5a4a2a; text-indent: 0; margin: 0; }
+.block-2 strong { color: #8b6914; }
+
+.block-3 {
+  background-color: #f5f0e8;
+  border: 1px solid #d4c8b0;
+  border-left: 4px solid #6b5b4a;
+  border-radius: 2px;
+  padding: 14px 18px;
+  margin: 18px 0;
+}
+.block-3 p { color: #4a4a4a; text-indent: 0; margin: 0; }
+.block-3 strong { color: #3f3f3f; }
 `.trim(),
 };
