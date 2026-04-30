@@ -384,7 +384,11 @@ export default function App() {
             {cssWarnings.length > 0 && (
               <div className="css-warnings">
                 {cssWarnings.map((w, i) => (
-                  <div key={i}>行{w.line}: {w.prop}{w.value ? `: ${w.value}` : ''} — {w.reason}</div>
+                  <div key={i}>
+                    第{w.line}行&nbsp;
+                    <strong>{w.prop}{w.value ? `: ${w.value}` : ''}</strong>
+                    &nbsp;— {w.reason}
+                  </div>
                 ))}
               </div>
             )}
