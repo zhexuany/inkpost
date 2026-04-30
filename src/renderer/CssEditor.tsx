@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, drawSelection } from '@codemirror/view';
 import { css as cssLang } from '@codemirror/lang-css';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -12,14 +12,16 @@ import { getPhrases } from './cmPhrases';
 interface CssEditorProps {
   css: string;
   onChange: (css: string) => void;
+  lang?: string;
 }
 
-export default function CssEditor({ css, onChange }: CssEditorProps) {
+export default function CssEditor({ css, onChange, lang }: CssEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const isSettingValue = useRef(false);
+  const phrasesCompartment = useRef(new Compartment());
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -50,7 +52,7 @@ export default function CssEditor({ css, onChange }: CssEditorProps) {
           indentWithTab,
         ]),
         oneDark,
-        EditorState.phrases.of(getPhrases()),
+        phrasesCompartment.current.of(EditorState.phrases.of(getPhrases())),
         updateListener,
         EditorView.theme({
           '&': { height: '100%', fontSize: '13px' },
@@ -83,6 +85,17 @@ export default function CssEditor({ css, onChange }: CssEditorProps) {
     });
     isSettingValue.current = false;
   }, [css]);
+
+  // Reconfigure phrases when language changes
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: phrasesCompartment.current.reconfigure(
+        EditorState.phrases.of(getPhrases()),
+      ),
+    });
+  }, [lang]);
 
   return (
     <div className="css-editor">

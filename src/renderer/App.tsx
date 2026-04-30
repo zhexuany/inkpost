@@ -375,12 +375,12 @@ export default function App() {
 
       <div className="main-area">
         <div className="editor-pane">
-          <Editor ref={editorRef} value={markdown} onChange={setMarkdown} onTopLineChange={onEditorScroll} />
+          <Editor ref={editorRef} value={markdown} onChange={setMarkdown} onTopLineChange={onEditorScroll} lang={lang} />
         </div>
 
         {showCssPanel && (
           <div className="css-pane">
-            <CssEditor css={activeTheme.css} onChange={handleCssChange} />
+            <CssEditor css={activeTheme.css} onChange={handleCssChange} lang={lang} />
             {cssWarnings.length > 0 && (
               <div className="css-warnings">
                 {cssWarnings.map((w, i) => (

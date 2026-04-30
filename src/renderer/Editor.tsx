@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, drawSelection } from '@codemirror/view';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -26,10 +26,11 @@ interface EditorProps {
   onChange: (value: string) => void;
   onTopLineChange?: (line: number) => void;
   targetScrollLine?: number;
+  lang?: string;
 }
 
 const Editor = forwardRef<EditorHandle, EditorProps>(
-  ({ value, onChange, onTopLineChange, targetScrollLine }, ref) => {
+  ({ value, onChange, onTopLineChange, targetScrollLine, lang }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const isSyncingScroll = useRef(false);
@@ -38,6 +39,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(
     onChangeRef.current = onChange;
     const onTopLineChangeRef = useRef(onTopLineChange);
     onTopLineChangeRef.current = onTopLineChange;
+    const phrasesCompartment = useRef(new Compartment());
 
     const getTopVisibleLine = useCallback((): number => {
       const view = viewRef.current;
@@ -131,7 +133,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(
             indentWithTab,
           ]),
           oneDark,
-          EditorState.phrases.of(getPhrases()),
+          phrasesCompartment.current.of(EditorState.phrases.of(getPhrases())),
           updateListener,
           scrollListener,
           EditorView.theme({
@@ -174,6 +176,17 @@ const Editor = forwardRef<EditorHandle, EditorProps>(
       if (targetScrollLine === undefined) return;
       doScrollToLine(targetScrollLine);
     }, [targetScrollLine, doScrollToLine]);
+
+    // Reconfigure phrases when language changes
+    useEffect(() => {
+      const view = viewRef.current;
+      if (!view) return;
+      view.dispatch({
+        effects: phrasesCompartment.current.reconfigure(
+          EditorState.phrases.of(getPhrases()),
+        ),
+      });
+    }, [lang]);
 
     return <div ref={containerRef} className="cm-editor-wrapper" />;
   },
