@@ -214,7 +214,10 @@ export default function App() {
     setContentHistory(history);
   }, [currentFilePath, markdown]);
 
+  const hasEditedCss = useRef(false);
+
   const handleThemeChange = useCallback(async (id: string) => {
+    hasEditedCss.current = false;
     setActiveThemeId(id);
     try { await window.inkpost.setActiveThemeId(id); } catch {}
   }, []);
@@ -228,8 +231,19 @@ export default function App() {
   }, []);
 
   const handleCssChange = useCallback((css: string) => {
+    hasEditedCss.current = true;
     setThemes(prev => prev.map(t => t.id === activeThemeId ? { ...t, css } : t));
   }, [activeThemeId]);
+
+  // Auto-save edited CSS to store (debounced)
+  useEffect(() => {
+    if (!hasEditedCss.current) return;
+    const timer = setTimeout(() => {
+      const theme = themes.find(t => t.id === activeThemeId);
+      if (theme) window.inkpost.saveTheme(theme);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [activeTheme?.css, activeThemeId, themes]);
 
   const handleJumpToLine = useCallback((lineIndex: number) => {
     editorRef.current?.jumpToLine(lineIndex);
