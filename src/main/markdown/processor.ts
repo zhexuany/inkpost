@@ -2,13 +2,11 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import remarkDirective from 'remark-directive';
-import remarkMath from 'remark-math';
 import remarkRehype from 'remark-rehype';
 import rehypeStringify from 'rehype-stringify';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkSourcePosition from './plugins/remarkSourcePosition';
 import remarkContainers from './plugins/remarkContainers';
-import remarkMathToSvg, { type MathRenderer } from './plugins/remarkMathToSvg';
 
 const sanitizeSchema = {
   strip: ['script', 'iframe', 'object', 'embed'],
@@ -60,33 +58,27 @@ export function normalizeContainerSyntax(md: string): string {
   return md.replace(/^:::\s+(\S+)/gm, ':::$1');
 }
 
-export function createProcessor(mathRenderer?: MathRenderer) {
-  const p = unified()
+function createProcessor() {
+  return unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkDirective)
-    .use(remarkMath)
-    .use(remarkContainers);
-
-  if (mathRenderer) {
-    p.use(remarkMathToSvg, mathRenderer);
-  }
-
-  return p
+    .use(remarkContainers)
     .use(remarkSourcePosition)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeStringify);
 }
 
-export async function processMarkdown(md: string): Promise<string> {
-  const normalized = normalizeContainerSyntax(md);
-  const result = await createProcessor().process(normalized);
-  return String(result);
+let _processor: ReturnType<typeof createProcessor> | null = null;
+
+function getProcessor() {
+  if (!_processor) _processor = createProcessor();
+  return _processor;
 }
 
-export async function processMarkdownWithMath(md: string, mathRenderer: MathRenderer): Promise<string> {
+export async function processMarkdown(md: string): Promise<string> {
   const normalized = normalizeContainerSyntax(md);
-  const result = await createProcessor(mathRenderer).process(normalized);
+  const result = await getProcessor().process(normalized);
   return String(result);
 }

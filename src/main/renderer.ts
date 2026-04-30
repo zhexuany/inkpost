@@ -4,8 +4,7 @@ import sharp from 'sharp';
 import juice from 'juice';
 import type { ImageProcessingOptions, RenderResult } from '../shared/types';
 import { DEFAULT_IMAGE_OPTIONS } from '../shared/types';
-import { processMarkdownWithMath } from './markdown/processor';
-import type { MathRenderer } from './markdown/plugins/remarkMathToSvg';
+import { processMarkdown } from './markdown/processor';
 
 const mathjaxNode = require('mathjax-node');
 
@@ -44,7 +43,72 @@ function renderFormulaSvg(latex: string, display: boolean): Promise<string> {
   });
 }
 
-const mathRenderer: MathRenderer = renderFormulaSvg;
+// Pre-process markdown to render math delimiters to SVG
+// This runs BEFORE unified so that math is already SVG HTML in the source
+async function renderMathInMarkdown(md: string, warnings: string[]): Promise<string> {
+  // Compute line number from character index (for data-source-* attrs)
+  const lineStarts: number[] = [0];
+  for (let i = 0; i < md.length; i++) {
+    if (md[i] === '\n') lineStarts.push(i + 1);
+  }
+  function getLineNumber(charIdx: number): number {
+    let lo = 0, hi = lineStarts.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >>> 1;
+      if (lineStarts[mid] <= charIdx) lo = mid + 1;
+      else hi = mid - 1;
+    }
+    return hi + 1; // 1-based
+  }
+
+  const replacements: { start: number; end: number; html: string }[] = [];
+
+  // Step 1: Block math $$...$$ (can span multiple lines)
+  const blockRe = /\$\$([\s\S]*?)\$\$/g;
+  let match: RegExpExecArray | null;
+  while ((match = blockRe.exec(md)) !== null) {
+    const latex = match[1].trim();
+    if (!latex) continue;
+    try {
+      const svg = await renderFormulaSvg(latex, true);
+      const escapedLatex = latex.replace(/"/g, '&quot;').replace(/\n/g, '&#10;');
+      const startLine = getLineNumber(match.index);
+      const endLine = getLineNumber(match.index + match[0].length - 1);
+      const html = `<span class="span-block-equation" style="cursor:pointer" data-source-start="${startLine}" data-source-end="${endLine}"><section class="block-equation" data-formula="${escapedLatex}" style="text-align:center;overflow-x:auto;overflow-y:auto;display:block;">${svg}</section></span>`;
+      replacements.push({ start: match.index, end: match.index + match[0].length, html });
+    } catch (err: any) {
+      warnings.push(`Formula SVG failed: ${err.message}`);
+    }
+  }
+
+  // Step 2: Inline math $...$ (single line, non-empty)
+  const inlineRe = /(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/g;
+  while ((match = inlineRe.exec(md)) !== null) {
+    // Skip if inside a block math replacement
+    if (replacements.some(r => match!.index >= r.start && match!.index < r.end)) continue;
+
+    const latex = match[1].trim();
+    if (!latex) continue;
+    try {
+      const svg = await renderFormulaSvg(latex, false);
+      const escapedLatex = latex.replace(/"/g, '&quot;');
+      const startLine = getLineNumber(match.index);
+      const endLine = getLineNumber(match.index + match[0].length - 1);
+      const html = `<span class="span-inline-equation" style="cursor:pointer" data-formula="${escapedLatex}" data-source-start="${startLine}" data-source-end="${endLine}">${svg}</span>`;
+      replacements.push({ start: match.index, end: match.index + match[0].length, html });
+    } catch (err: any) {
+      warnings.push(`Formula SVG failed: ${err.message}`);
+    }
+  }
+
+  // Apply in reverse order to preserve character indices
+  replacements.sort((a, b) => b.start - a.start);
+  let result = md;
+  for (const r of replacements) {
+    result = result.slice(0, r.start) + r.html + result.slice(r.end);
+  }
+  return result;
+}
 
 // Post-process unified output to add mdnice-compatible HTML structure
 function postProcessHtml(html: string): string {
@@ -171,19 +235,26 @@ export async function renderMarkdown(
     }
   }
 
-  // 3. Unified pipeline: Markdown → HTML with source positions + math SVG
+  // 3. Render math to SVG (pre-processing, before unified)
+  try {
+    processedMd = await renderMathInMarkdown(processedMd, warnings);
+  } catch (err: any) {
+    warnings.push(`Math rendering failed: ${err.message}`);
+  }
+
+  // 4. Unified pipeline: Markdown → HTML with source positions
   let htmlBody: string;
   try {
-    htmlBody = await processMarkdownWithMath(processedMd, mathRenderer);
+    htmlBody = await processMarkdown(processedMd);
   } catch (err: any) {
     warnings.push(`Markdown rendering failed: ${err.message}`);
     htmlBody = `<p>Rendering error: ${err.message}</p>`;
   }
 
-  // 4. mdnice-compatible structure
+  // 5. mdnice-compatible structure
   htmlBody = postProcessHtml(htmlBody);
 
-  // 5. CSS inline with juice
+  // 6. CSS inline with juice
   const fullHtml = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -195,16 +266,16 @@ export async function renderMarkdown(
     preserveImportant: true,
   });
 
-  // 6. Sanitize inline styles for WeChat compatibility
+  // 7. Sanitize inline styles for WeChat compatibility
   inlinedHtml = sanitizeWechatStyles(inlinedHtml);
 
-  // 7. Extract #nice content for clipboard
+  // 8. Extract #nice content for clipboard
   const niceMatch = inlinedHtml.match(/<section[^>]*id="nice"[^>]*>([\s\S]*)<\/section>/i);
   const clipboardHtml = niceMatch
     ? `<section id="nice">${niceMatch[1].trim()}</section>`
     : inlinedHtml;
 
-  // 8. Stats
+  // 9. Stats
   const textContent = markdown.replace(/!\[[^\]]*\]\([^)]+\)/g, '').replace(/[#*`>\[\]()_-]/g, '');
   const wordCount = textContent.replace(/\s+/g, '').length;
   const imageCount = imageMatches.length;
