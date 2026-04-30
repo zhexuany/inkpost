@@ -206,14 +206,10 @@ export default function App() {
   }, []);
 
   // Scroll sync via ScrollSyncManager
-  const { refresh: refreshScrollMap } = useScrollSync(editorRef, previewRef);
+  const { onEditorScroll, onPreviewScroll, onScrollMapReady } = useScrollSync(editorRef, previewRef);
 
-  const handleScrollMapReady = useCallback(() => {
-    refreshScrollMap();
-  }, [refreshScrollMap]);
-
-  // Refresh ScrollMap when content changes or layout shifts
-  useResizeRefresh(previewRef, refreshScrollMap, true);
+  // Refresh ScrollMap when content changes (images, layout shifts)
+  useResizeRefresh(previewRef, onScrollMapReady, !!renderResult);
 
   // Listen for file opened from menu
   useEffect(() => {
@@ -334,7 +330,7 @@ export default function App() {
 
       <div className="main-area">
         <div className="editor-pane">
-          <Editor ref={editorRef} value={markdown} onChange={setMarkdown} />
+          <Editor ref={editorRef} value={markdown} onChange={setMarkdown} onTopLineChange={onEditorScroll} />
         </div>
 
         {showCssPanel && (
@@ -351,7 +347,7 @@ export default function App() {
         )}
 
         <div className="preview-pane">
-          <Preview ref={previewRef} html={renderResult?.html ?? ''} onJumpToLine={handleJumpToLine} onScrollMapReady={handleScrollMapReady} />
+          <Preview ref={previewRef} html={renderResult?.html ?? ''} onJumpToLine={handleJumpToLine} onScroll={onPreviewScroll} onScrollMapReady={onScrollMapReady} />
         </div>
       </div>
 
