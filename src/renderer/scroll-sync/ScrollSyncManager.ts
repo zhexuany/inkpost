@@ -56,8 +56,13 @@ export class ScrollSyncManager {
         el.scrollTop = Math.max(0, targetTop);
       }
     } finally {
+      // Double rAF: rafThrottle'd scroll handler fires in the next
+      // frame's rAF batch. We register a 2nd rAF so the lock stays
+      // active through that batch and lifts one frame later.
       requestAnimationFrame(() => {
-        this.syncing = false;
+        requestAnimationFrame(() => {
+          this.syncing = false;
+        });
       });
     }
   }
@@ -98,7 +103,9 @@ export class ScrollSyncManager {
       scrollEditorToLine(Math.round(sourceLine) - 1); // 1-based → 0-based
     } finally {
       requestAnimationFrame(() => {
-        this.syncing = false;
+        requestAnimationFrame(() => {
+          this.syncing = false;
+        });
       });
     }
   }
