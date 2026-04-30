@@ -7,7 +7,7 @@ import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { localizeSearchPanel } from './searchI18n';
+import { zhPhrases } from './cmPhrases';
 
 interface CssEditorProps {
   css: string;
@@ -50,6 +50,7 @@ export default function CssEditor({ css, onChange }: CssEditorProps) {
           indentWithTab,
         ]),
         oneDark,
+        EditorState.phrases.of(zhPhrases),
         updateListener,
         EditorView.theme({
           '&': { height: '100%', fontSize: '13px' },
@@ -63,10 +64,7 @@ export default function CssEditor({ css, onChange }: CssEditorProps) {
     const view = new EditorView({ state, parent: containerRef.current });
     viewRef.current = view;
 
-    const stopI18n = localizeSearchPanel(view);
-
     return () => {
-      stopI18n();
       view.destroy();
       viewRef.current = null;
     };
