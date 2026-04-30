@@ -19,6 +19,7 @@ const remarkContainers: Plugin<[], Node> = function () {
       if (node.type !== 'containerDirective') return;
       if (!CONTAINER_TYPES.has(node.name)) return;
 
+      node.data ||= {};
       node.data.hName = 'section';
       node.data.hProperties = {
         ...((node.data.hProperties as Record<string, unknown>) || {}),

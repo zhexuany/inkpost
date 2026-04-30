@@ -13,6 +13,15 @@ export function useScrollSync(
   previewRef: React.RefObject<PreviewHandle | null>,
 ) {
   const managerRef = useRef<ScrollSyncManager>(new ScrollSyncManager());
+  const pendingRestoreLine = useRef<number | null>(null);
+
+  /** Save the current editor top line for restoration after content re-render. */
+  const captureEditorLine = useCallback(() => {
+    const editor = editorRef.current;
+    if (editor) {
+      pendingRestoreLine.current = editor.getTopVisibleLine();
+    }
+  }, [editorRef]);
 
   /** Called when editor scrolls. topLine is 0-based. */
   const onEditorScroll = useCallback((topLine: number) => {
@@ -35,14 +44,21 @@ export function useScrollSync(
     );
   }, [editorRef, previewRef]);
 
-  /** Called when preview content changes — rebuild ScrollMap and re-sync. */
+  /** Called when preview content changes — rebuild ScrollMap and restore position. */
   const onScrollMapReady = useCallback(() => {
     const preview = previewRef.current;
     if (!preview) return;
     const el = preview.getScrollElement();
     if (!el) return;
     managerRef.current.refresh(el);
+
+    // Restore preview position to match the editor line saved before re-render
+    if (pendingRestoreLine.current !== null) {
+      const line = pendingRestoreLine.current;
+      pendingRestoreLine.current = null;
+      managerRef.current.syncEditorToPreview(line, () => el);
+    }
   }, [previewRef]);
 
-  return { onEditorScroll, onPreviewScroll, onScrollMapReady };
+  return { onEditorScroll, onPreviewScroll, onScrollMapReady, captureEditorLine };
 }

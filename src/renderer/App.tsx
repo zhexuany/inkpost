@@ -137,6 +137,7 @@ export default function App() {
   useEffect(() => {
     if (renderTimerRef.current) clearTimeout(renderTimerRef.current);
     renderTimerRef.current = setTimeout(() => {
+      captureEditorLine();
       doRender();
     }, 300);
     return () => {
@@ -206,7 +207,7 @@ export default function App() {
   }, []);
 
   // Scroll sync via ScrollSyncManager
-  const { onEditorScroll, onPreviewScroll, onScrollMapReady } = useScrollSync(editorRef, previewRef);
+  const { onEditorScroll, onPreviewScroll, onScrollMapReady, captureEditorLine } = useScrollSync(editorRef, previewRef);
 
   // Refresh ScrollMap when content changes (images, layout shifts)
   useResizeRefresh(previewRef, onScrollMapReady, !!renderResult);
