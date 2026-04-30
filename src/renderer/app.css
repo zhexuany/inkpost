@@ -123,11 +123,13 @@ body {
 }
 
 .theme-menu button.danger {
-  color: #e53935;
+  color: #c62828;
+  font-size: 12px;
 }
 
 .theme-menu button.danger:hover {
-  background: #fde8e8;
+  background: #ffebee;
+  color: #b71c1c;
 }
 
 .theme-menu-sep {

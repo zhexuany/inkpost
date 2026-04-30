@@ -129,11 +129,15 @@ export default function ThemeManager({
           {activeTheme && !activeTheme.isBuiltIn && (
             <>
               <button onClick={() => openInput('rename', '重命名主题', activeTheme.name)}>重命名</button>
-              <button onClick={() => openConfirm('delete', '删除主题', `确定删除主题 "${activeTheme.name}"？此操作不可撤销。`)} className="danger">删除</button>
+              <div className="theme-menu-sep" />
+              <button onClick={() => openConfirm('delete', '删除主题', `确定删除主题 "${activeTheme.name}"？此操作不可撤销。`)} className="danger">删除主题</button>
             </>
           )}
           {activeTheme?.isBuiltIn && (
-            <button onClick={() => openConfirm('reset', '恢复默认样式', `确定恢复 "${activeTheme.name}" 为默认样式？你的修改将丢失。`)}>恢复默认样式</button>
+            <>
+              <div className="theme-menu-sep" />
+              <button onClick={() => openConfirm('reset', '恢复默认样式', `确定恢复 "${activeTheme.name}" 为默认样式？你的修改将丢失。`)}>恢复默认样式</button>
+            </>
           )}
         </div>
       )}
