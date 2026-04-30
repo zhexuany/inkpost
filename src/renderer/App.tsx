@@ -1,12 +1,14 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Editor, { type EditorHandle } from './Editor';
-import Preview from './Preview';
+import Preview, { type PreviewHandle } from './Preview';
 import CssEditor from './CssEditor';
 import StatusBar from './StatusBar';
 import { presetThemes } from '../shared/presets';
 import { scanCSS, type CSSWarning } from '../shared/css-scanner';
 import type { RenderResult, InkPostTheme } from '../shared/types';
 import { t, setLang, getLang, type Lang } from '../shared/i18n';
+import { useScrollSync } from './hooks/useScrollSync';
+import { useResizeRefresh } from './hooks/useResizeRefresh';
 
 const SAMPLE_MD = `# 欢迎使用墨帖 InkPost
 
@@ -75,11 +77,9 @@ export default function App() {
   const [contentHistory, setContentHistory] = useState<{ id: string; content: string; filePath: string | null; timestamp: number }[]>([]);
   const [showContentHistory, setShowContentHistory] = useState(false);
   const [cssWarnings, setCssWarnings] = useState<CSSWarning[]>([]);
-  const [editorScrollRatio, setEditorScrollRatio] = useState<number | undefined>(undefined);
-  const [previewScrollRatio, setPreviewScrollRatio] = useState<number | undefined>(undefined);
   const renderTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const lastScrollSource = useRef<'editor' | 'preview' | null>(null);
   const editorRef = useRef<EditorHandle>(null);
+  const previewRef = useRef<PreviewHandle>(null);
 
   const activeTheme = themes.find(t => t.id === activeThemeId) ?? themes[0];
 
@@ -201,21 +201,19 @@ export default function App() {
     setThemes(prev => prev.map(t => t.id === activeThemeId ? { ...t, css } : t));
   }, [activeThemeId]);
 
-  const handleEditorScroll = useCallback((ratio: number) => {
-    lastScrollSource.current = 'editor';
-    setEditorScrollRatio(undefined);
-    setPreviewScrollRatio(ratio);
-  }, []);
-
-  const handlePreviewScroll = useCallback((ratio: number) => {
-    lastScrollSource.current = 'preview';
-    setPreviewScrollRatio(undefined);
-    setEditorScrollRatio(ratio);
-  }, []);
-
   const handleJumpToLine = useCallback((lineIndex: number) => {
     editorRef.current?.jumpToLine(lineIndex);
   }, []);
+
+  // Scroll sync via ScrollSyncManager
+  const { refresh: refreshScrollMap } = useScrollSync(editorRef, previewRef);
+
+  const handleScrollMapReady = useCallback(() => {
+    refreshScrollMap();
+  }, [refreshScrollMap]);
+
+  // Refresh ScrollMap when content changes or layout shifts
+  useResizeRefresh(previewRef, refreshScrollMap, true);
 
   // Listen for file opened from menu
   useEffect(() => {
@@ -336,7 +334,7 @@ export default function App() {
 
       <div className="main-area">
         <div className="editor-pane">
-          <Editor ref={editorRef} value={markdown} onChange={setMarkdown} onScroll={handleEditorScroll} externalScrollRatio={editorScrollRatio} />
+          <Editor ref={editorRef} value={markdown} onChange={setMarkdown} />
         </div>
 
         {showCssPanel && (
@@ -353,7 +351,7 @@ export default function App() {
         )}
 
         <div className="preview-pane">
-          <Preview html={renderResult?.html ?? ''} markdown={markdown} onScroll={handlePreviewScroll} externalScrollRatio={previewScrollRatio} onJumpToLine={handleJumpToLine} />
+          <Preview ref={previewRef} html={renderResult?.html ?? ''} onJumpToLine={handleJumpToLine} onScrollMapReady={handleScrollMapReady} />
         </div>
       </div>
 

@@ -1,92 +1,61 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
+import { buildScrollMap } from './scroll-sync/buildScrollMap';
+import { rafThrottle } from './scroll-sync/rafThrottle';
+import type { ScrollMap } from './scroll-sync/types';
+
+export interface PreviewHandle {
+  getScrollElement(): HTMLElement | null;
+  getScrollMap(): ScrollMap;
+  refreshScrollMap(): void;
+}
 
 interface PreviewProps {
   html: string;
-  markdown?: string;
-  onScroll?: (ratio: number) => void;
-  externalScrollRatio?: number;
+  scrollToOffset?: number;
+  onScroll?: (offset: number) => void;
+  onScrollMapReady?: (map: ScrollMap) => void;
   onJumpToLine?: (lineIndex: number) => void;
 }
 
-// Find the closest ancestor with meaningful text content
-function getClickTargetText(el: Element | null): { text: string; tag: string } | null {
-  while (el && el.tagName !== 'BODY' && el.tagName !== 'HTML') {
-    const tag = el.tagName.toLowerCase();
-    // Only match block-level content elements
-    if (['h1','h2','h3','h4','h5','h6','p','li','blockquote','td','th','pre'].includes(tag)) {
-      const text = el.textContent?.trim() ?? '';
-      if (text.length > 0) {
-        return { text: text.substring(0, 80), tag };
-      }
-    }
-    el = el.parentElement;
-  }
-  return null;
-}
+const Preview = forwardRef<PreviewHandle, PreviewProps>(
+  ({ html, scrollToOffset, onScroll, onScrollMapReady, onJumpToLine }, ref) => {
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const isSyncingScroll = useRef(false);
+    const scrollMapRef = useRef<ScrollMap>([]);
+    const onScrollMapReadyRef = useRef(onScrollMapReady);
+    onScrollMapReadyRef.current = onScrollMapReady;
 
-// Search for the best matching line in markdown source
-function findMatchingLineIndex(markdown: string, searchText: string, tag: string): number {
-  const lines = markdown.split('\n');
+    const getScrollElement = useCallback((): HTMLElement | null => {
+      return iframeRef.current?.contentDocument?.documentElement ?? null;
+    }, []);
 
-  // 1. Exact heading match: "# text" or "## text"
-  if (tag.startsWith('h')) {
-    const level = parseInt(tag[1]);
-    const prefix = '#'.repeat(level);
-    for (let i = 0; i < lines.length; i++) {
-      const trimmed = lines[i].trim();
-      if (trimmed.startsWith(prefix + ' ') && trimmed.includes(searchText)) {
-        return i;
-      }
-    }
-  }
+    const getScrollMap = useCallback((): ScrollMap => {
+      return scrollMapRef.current;
+    }, []);
 
-  // 2. List item match: "- text" or "1. text"
-  if (tag === 'li') {
-    const plainText = searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    for (let i = 0; i < lines.length; i++) {
-      const trimmed = lines[i].trim();
-      if (/^[-*]\s/.test(trimmed) || /^\d+\.\s/.test(trimmed)) {
-        if (trimmed.includes(searchText) || trimmed.includes(searchText.replace(/\s+/g, ' '))) {
-          return i;
-        }
-      }
-    }
-  }
+    const refreshScrollMap = useCallback(() => {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return;
+      const container = doc.documentElement;
+      scrollMapRef.current = buildScrollMap(container);
+      onScrollMapReadyRef.current?.(scrollMapRef.current);
+    }, []);
 
-  // 3. Fuzzy text search across all lines
-  const searchWords = searchText.split(/\s+/).filter(w => w.length > 2);
-  if (searchWords.length > 0) {
-    let bestLine = 0;
-    let bestScore = 0;
-    for (let i = 0; i < lines.length; i++) {
-      let score = 0;
-      for (const word of searchWords) {
-        if (lines[i].includes(word)) score++;
-      }
-      if (score > bestScore) {
-        bestScore = score;
-        bestLine = i;
-      }
-    }
-    if (bestScore > 0) return bestLine;
-  }
+    useImperativeHandle(ref, () => ({
+      getScrollElement,
+      getScrollMap,
+      refreshScrollMap,
+    }));
 
-  // 4. Fallback: first line
-  return 0;
-}
+    // Write HTML into iframe + build scroll map + attach listeners
+    useEffect(() => {
+      if (!iframeRef.current) return;
+      const iframe = iframeRef.current;
+      const doc = iframe.contentDocument;
+      if (!doc) return;
 
-export default function Preview({ html, markdown, onScroll, externalScrollRatio, onJumpToLine }: PreviewProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const isSyncingScroll = useRef(false);
-
-  // Write HTML into iframe + attach listeners
-  useEffect(() => {
-    if (!iframeRef.current) return;
-    const doc = iframeRef.current.contentDocument;
-    if (!doc) return;
-
-    doc.open();
-    doc.write(`<!DOCTYPE html>
+      doc.open();
+      doc.write(`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -101,54 +70,63 @@ html, body {
 </head>
 <body>${html}</body>
 </html>`);
-    doc.close();
+      doc.close();
 
-    // Click handler: jump to corresponding markdown line
-    const handleClick = (e: MouseEvent) => {
-      if (!onJumpToLine) return;
-      const target = getClickTargetText(e.target as Element);
-      if (!target || !markdown) return;
-      const lineIndex = findMatchingLineIndex(markdown, target.text, target.tag);
-      onJumpToLine(lineIndex);
-    };
+      // Build scroll map after DOM is ready
+      const container = doc.documentElement;
+      scrollMapRef.current = buildScrollMap(container);
+      onScrollMapReadyRef.current?.(scrollMapRef.current);
 
-    // Scroll handler: sync to editor
-    const handleIframeScroll = () => {
-      if (isSyncingScroll.current || !onScroll) return;
-      const el = doc.documentElement;
-      const maxScroll = el.scrollHeight - el.clientHeight;
-      if (maxScroll <= 0) return;
-      onScroll(el.scrollTop / maxScroll);
-    };
+      // Click handler: jump to corresponding source line via data-source-start
+      const handleClick = (e: MouseEvent) => {
+        if (!onJumpToLine) return;
+        const el = (e.target as Element)?.closest?.('[data-source-start]');
+        if (!el) return;
+        const lineAttr = el.getAttribute('data-source-start');
+        if (!lineAttr) return;
+        const line = parseInt(lineAttr, 10);
+        if (!isNaN(line)) {
+          onJumpToLine(line - 1); // 1-based → 0-based
+        }
+      };
 
-    doc.addEventListener('click', handleClick);
-    doc.addEventListener('scroll', handleIframeScroll);
-    return () => {
-      doc.removeEventListener('click', handleClick);
-      doc.removeEventListener('scroll', handleIframeScroll);
-    };
-  }, [html, markdown, onScroll, onJumpToLine]);
+      // Scroll handler
+      const handleIframeScroll = rafThrottle(() => {
+        if (isSyncingScroll.current || !onScroll) return;
+        onScroll(doc.documentElement.scrollTop);
+      });
 
-  // Sync from external scroll ratio (editor → preview)
-  useEffect(() => {
-    if (externalScrollRatio === undefined) return;
-    const doc = iframeRef.current?.contentDocument;
-    if (!doc) return;
-    isSyncingScroll.current = true;
-    const el = doc.documentElement;
-    const maxScroll = el.scrollHeight - el.clientHeight;
-    el.scrollTop = externalScrollRatio * maxScroll;
-    requestAnimationFrame(() => {
-      isSyncingScroll.current = false;
-    });
-  }, [externalScrollRatio]);
+      doc.addEventListener('click', handleClick);
+      doc.addEventListener('scroll', handleIframeScroll, { passive: true });
 
-  return (
-    <iframe
-      ref={iframeRef}
-      className="preview-iframe"
-      sandbox="allow-same-origin allow-scripts"
-      title="Preview"
-    />
-  );
-}
+      return () => {
+        doc.removeEventListener('click', handleClick);
+        doc.removeEventListener('scroll', handleIframeScroll);
+      };
+    }, [html, onScroll, onJumpToLine]);
+
+    // Sync from external scroll offset (editor → preview)
+    useEffect(() => {
+      if (scrollToOffset === undefined) return;
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return;
+      isSyncingScroll.current = true;
+      doc.documentElement.scrollTop = Math.max(0, scrollToOffset);
+      requestAnimationFrame(() => {
+        isSyncingScroll.current = false;
+      });
+    }, [scrollToOffset]);
+
+    return (
+      <iframe
+        ref={iframeRef}
+        className="preview-iframe"
+        sandbox="allow-same-origin allow-scripts"
+        title="Preview"
+      />
+    );
+  },
+);
+
+Preview.displayName = 'Preview';
+export default Preview;

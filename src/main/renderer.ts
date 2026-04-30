@@ -1,63 +1,29 @@
-import MarkdownIt from 'markdown-it';
-import footnote from 'markdown-it-footnote';
-import texmath from 'markdown-it-texmath';
-import container from 'markdown-it-container';
-import juice from 'juice';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
+import juice from 'juice';
 import type { ImageProcessingOptions, RenderResult } from '../shared/types';
 import { DEFAULT_IMAGE_OPTIONS } from '../shared/types';
+import { processMarkdownWithMath } from './markdown/processor';
+import type { MathRenderer } from './markdown/plugins/remarkMathToSvg';
 
-const katex = require('katex');
 const mathjaxNode = require('mathjax-node');
-const texmathPlugin = texmath.use(katex);
 
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-}).use(footnote).use(texmathPlugin);
-
-// Register ::: container syntax (use <section> for WeChat compatibility)
-for (const name of ['block-1', 'block-2', 'block-3', 'info', 'tip', 'warning', 'danger']) {
-  md.use(container, name, {
-    render(tokens: any, idx: number) {
-      if (tokens[idx].nesting === 1) {
-        return `<section class="${name}">\n`;
-      }
-      return '</section>\n';
-    },
-  });
-}
-
-// Card containers (image-text layout)
-for (const name of ['card-left', 'card-right']) {
-  md.use(container, name, {
-    render(tokens: any, idx: number) {
-      if (tokens[idx].nesting === 1) {
-        return `<section class="card ${name}">\n`;
-      }
-      return '</section>\n';
-    },
-  });
-}
-
-// Configure mathjax-node: disable fontCache to avoid id attrs (WeChat strips SVG id)
+// Configure mathjax-node
 mathjaxNode.config({
   MathJax: {
     tex2jax: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
   },
 });
 
-// Normalize LaTeX delimiters: \[...\] → $$...$$, \(...\) → $...$
+// Normalize LaTeX delimiters: \[...\] -> $$...$$, \(...\) -> $...$
 function normalizeLatexDelimiters(md: string): string {
   md = md.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `$$${formula}$$`);
   md = md.replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => `$${formula}$`);
   return md;
 }
 
-// Render a single formula as SVG using mathjax-node (no id attributes)
+// Render a single formula as SVG using mathjax-node
 function renderFormulaSvg(latex: string, display: boolean): Promise<string> {
   return new Promise((resolve, reject) => {
     mathjaxNode.typeset({
@@ -66,7 +32,7 @@ function renderFormulaSvg(latex: string, display: boolean): Promise<string> {
       svg: true,
       useFontCache: false,
       linebreaks: !display,
-      display: display,
+      display,
       speakText: false,
     }, (data: any) => {
       if (data.errors) {
@@ -78,101 +44,23 @@ function renderFormulaSvg(latex: string, display: boolean): Promise<string> {
   });
 }
 
-// Replace KaTeX HTML output with mdnice-compatible SVG structure
-async function replaceKatexWithSvg(html: string): Promise<string> {
-  html = await replaceDisplayMath(html);
-  html = await replaceInlineMath(html);
-  return html;
-}
+const mathRenderer: MathRenderer = renderFormulaSvg;
 
-async function replaceDisplayMath(html: string): Promise<string> {
-  // texmath wraps display math in <section><eqn>...</eqn></section>
-  const displayRe = /<section><eqn[^>]*>([\s\S]*?)<\/eqn><\/section>/g;
-  const matches = [...html.matchAll(displayRe)];
-
-  for (const match of matches) {
-    const latex = extractLatex(match[1]);
-    if (!latex) continue;
-    try {
-      const svg = await renderFormulaSvg(latex, true);
-      // Match mdnice structure: <span class="span-block-equation"><section class="block-equation">
-      const escapedLatex = latex.replace(/"/g, '&quot;').replace(/\n/g, '&#10;');
-      const wrapped = `<span class="span-block-equation" style="cursor:pointer"><section class="block-equation" data-formula="${escapedLatex}" style="text-align: center; overflow-x: auto; overflow-y: auto; display: block;">${svg}</section></span>`;
-      html = html.replace(match[0], wrapped);
-    } catch {
-      // Keep original KaTeX HTML as fallback
-    }
-  }
-
-  // Handle <eqn> without <section> wrapper (edge case)
-  const bareDisplayRe = /<eqn[^>]*>([\s\S]*?)<\/eqn>/g;
-  const bareMatches = [...html.matchAll(bareDisplayRe)];
-  for (const match of bareMatches) {
-    const latex = extractLatex(match[1]);
-    if (!latex) continue;
-    try {
-      const svg = await renderFormulaSvg(latex, true);
-      const escapedLatex = latex.replace(/"/g, '&quot;').replace(/\n/g, '&#10;');
-      const wrapped = `<span class="span-block-equation" style="cursor:pointer"><section class="block-equation" data-formula="${escapedLatex}" style="text-align: center; overflow-x: auto; overflow-y: auto; display: block;">${svg}</section></span>`;
-      html = html.replace(match[0], wrapped);
-    } catch {
-      // Keep original
-    }
-  }
-
-  return html;
-}
-
-async function replaceInlineMath(html: string): Promise<string> {
-  const inlineRe = /<eq>([\s\S]*?)<\/eq>/g;
-  const matches = [...html.matchAll(inlineRe)];
-
-  for (const match of matches) {
-    const latex = extractLatex(match[1]);
-    if (!latex) continue;
-    try {
-      const svg = await renderFormulaSvg(latex, false);
-      // Inline math: wrap in <span class="span-inline-equation">
-      const escapedLatex = latex.replace(/"/g, '&quot;');
-      const wrapped = `<span class="span-inline-equation" style="cursor:pointer" data-formula="${escapedLatex}">${svg}</span>`;
-      html = html.replace(match[0], wrapped);
-    } catch {
-      // Keep original KaTeX HTML as fallback
-    }
-  }
-
-  return html;
-}
-
-// Extract LaTeX source from KaTeX HTML output
-function extractLatex(katexHtml: string): string | null {
-  const annotRe = /<annotation[^>]*>([\s\S]*?)<\/annotation>/;
-  const m = katexHtml.match(annotRe);
-  if (m) return m[1];
-
-  const labelRe = /aria-label="([^"]*)"/;
-  const lm = katexHtml.match(labelRe);
-  if (lm) return lm[1];
-
-  const text = katexHtml.replace(/<[^>]+>/g, '').trim();
-  return text.length > 0 ? text : null;
-}
-
-// Post-process markdown-it output to add mdnice-compatible HTML structure
+// Post-process unified output to add mdnice-compatible HTML structure
 function postProcessHtml(html: string): string {
-  // 1. Wrap headings with mdnice-style .prefix/.content/.suffix spans
+  // 1. Wrap headings with mdnice-style spans
   html = html.replace(/<h([1-3])([^>]*)>([\s\S]*?)<\/h\1>/g, (_, level, attrs, content) => {
     const text = content.replace(/<[^>]+>/g, '').trim();
     return `<h${level}${attrs}><span class="prefix"></span><span class="content">${text}</span><span class="suffix"></span></h${level}>`;
   });
 
-  // 2. Add multiquote-N classes to nested blockquotes
+  // 2. Add multiquote-N classes to nested blockquotes (handles attributes now)
   html = addMultiquoteClasses(html);
 
-  // 3. Wrap <li> content in <section> for mdnice list styling
-  html = html.replace(/<li>([\s\S]*?)<\/li>/g, (match, content: string) => {
+  // 3. Wrap <li> content in <section> for mdnice list styling (handles attributes now)
+  html = html.replace(/<li([^>]*)>([\s\S]*?)<\/li>/g, (match, attrs, content: string) => {
     if (content.includes('<section')) return match;
-    return `<li><section>${content}</section></li>`;
+    return `<li${attrs}><section>${content}</section></li>`;
   });
 
   return html;
@@ -180,26 +68,18 @@ function postProcessHtml(html: string): string {
 
 function addMultiquoteClasses(html: string): string {
   let depth = 0;
-  let result = '';
-  let i = 0;
-
-  while (i < html.length) {
-    if (html.substring(i, i + 12) === '<blockquote>') {
-      depth++;
-      result += `<blockquote class="multiquote-${depth}">`;
-      i += 12;
-    } else if (html.substring(i, i + 13) === '</blockquote>') {
-      result += '</blockquote>';
-      if (depth > 0) depth--;
-      i += 13;
-    } else {
-      result += html[i];
-      i++;
-    }
-  }
-
-  return result;
+  return html.replace(/<blockquote(\s[^>]*)?>/gi, (match, attrs) => {
+    depth++;
+    // Don't modify if already has a class attribute
+    if (attrs && /\bclass\s*=\s*["']/.test(attrs)) return match;
+    return `<blockquote class="multiquote-${depth}"${attrs || ''}>`;
+  }).replace(/<\/blockquote>/gi, () => {
+    depth = Math.max(0, depth - 1);
+    return '</blockquote>';
+  });
 }
+
+// --- Image processing (unchanged) ---
 
 const IMAGE_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
@@ -231,15 +111,13 @@ async function processImage(
     .jpeg({ quality: options.quality })
     .toBuffer();
 
-  const mimeType = 'image/jpeg';
-  return `data:${mimeType};base64,${buf.toString('base64')}`;
+  return `data:image/jpeg;base64,${buf.toString('base64')}`;
 }
 
 // Convert WeChat-unsafe inline CSS to safe alternatives
 function sanitizeWechatStyles(html: string): string {
   return html.replace(/style="([^"]*)"/g, (_match, styleContent: string) => {
-    // Split into individual CSS declarations
-    const declarations = styleContent.split(';').map(d => d.trim()).filter(Boolean);
+    const declarations = styleContent.split(';').map((d: string) => d.trim()).filter(Boolean);
     const result: string[] = [];
 
     for (const decl of declarations) {
@@ -247,18 +125,16 @@ function sanitizeWechatStyles(html: string): string {
 
       if (propLower === 'background' || propLower === 'background-image') {
         if (decl.includes('linear-gradient')) {
-          // Extract first color from gradient as solid background-color
           const colors = decl.match(/rgba?\(\s*\d+[^)]*\)|#[0-9a-fA-F]{3,8}/g);
           if (colors && colors.length >= 1) {
             result.push(`background-color: ${colors[0]}`);
           }
-          // Skip the gradient itself
           continue;
         }
       }
 
       if (propLower === 'background' && decl.includes('none')) {
-        continue; // Skip "background: none"
+        continue;
       }
 
       result.push(decl);
@@ -278,10 +154,11 @@ export async function renderMarkdown(
   const warnings: string[] = [];
   const mdDir = mdFilePath ? path.dirname(mdFilePath) : process.cwd();
 
-  // Process local images to base64
-  const imageMatches = [...markdown.matchAll(IMAGE_RE)];
+  // 1. Normalize LaTeX delimiters
   let processedMd = normalizeLatexDelimiters(markdown);
 
+  // 2. Process local images to base64
+  const imageMatches = [...processedMd.matchAll(IMAGE_RE)];
   for (const match of imageMatches) {
     const [fullMatch, alt, src] = match;
     if (isLocalPath(src)) {
@@ -294,42 +171,40 @@ export async function renderMarkdown(
     }
   }
 
-  // Render markdown to HTML (includes KaTeX via texmath)
-  let htmlBody = md.render(processedMd);
-
-  // Replace KaTeX HTML with SVG in mdnice-compatible structure
+  // 3. Unified pipeline: Markdown → HTML with source positions + math SVG
+  let htmlBody: string;
   try {
-    htmlBody = await replaceKatexWithSvg(htmlBody);
+    htmlBody = await processMarkdownWithMath(processedMd, mathRenderer);
   } catch (err: any) {
-    warnings.push(`Formula SVG conversion failed: ${err.message}`);
+    warnings.push(`Markdown rendering failed: ${err.message}`);
+    htmlBody = `<p>Rendering error: ${err.message}</p>`;
   }
 
-  // Add mdnice-compatible structure
+  // 4. mdnice-compatible structure
   htmlBody = postProcessHtml(htmlBody);
 
-  // Wrap in #nice container for mdnice CSS compatibility
+  // 5. CSS inline with juice
   const fullHtml = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body><section id="nice">${htmlBody}</section></body>
 </html>`;
 
-  // Only inline user CSS (SVG formulas don't need KaTeX CSS)
   let inlinedHtml = juice.inlineContent(fullHtml, css, {
     inlinePseudoElements: false,
     preserveImportant: true,
   });
 
-  // Sanitize inline styles for WeChat compatibility
+  // 6. Sanitize inline styles for WeChat compatibility
   inlinedHtml = sanitizeWechatStyles(inlinedHtml);
 
-  // Extract just the #nice content for clipboard
+  // 7. Extract #nice content for clipboard
   const niceMatch = inlinedHtml.match(/<section[^>]*id="nice"[^>]*>([\s\S]*)<\/section>/i);
   const clipboardHtml = niceMatch
     ? `<section id="nice">${niceMatch[1].trim()}</section>`
     : inlinedHtml;
 
-  // Stats
+  // 8. Stats
   const textContent = markdown.replace(/!\[[^\]]*\]\([^)]+\)/g, '').replace(/[#*`>\[\]()_-]/g, '');
   const wordCount = textContent.replace(/\s+/g, '').length;
   const imageCount = imageMatches.length;
