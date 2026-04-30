@@ -47,30 +47,56 @@ const config: ForgeConfig = {
   packagerConfig: {
     icon: './assets/icon',
     appBundleId: 'com.inkpost.app',
-    appCategoryType: 'public.app-category.productivity',
+    appCategoryType: 'public-app-category.productivity',
+    appCopyright: 'InkPost',
     extendInfo: {
       CFBundleName: APP_NAME,
       CFBundleDisplayName: APP_NAME,
     },
+    // Signing (set APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD env vars to enable)
+    osxSign: {},
   },
   rebuildConfig: {},
   makers: [
     {
-      name: '@electron-forge/maker-squirrel',
-      config: { name: 'InkPost' },
-    },
-    {
       name: '@electron-forge/maker-dmg',
-      config: { name: APP_NAME },
+      config: {
+        name: APP_NAME,
+        icon: './assets/icon.icns',
+      },
     },
     {
       name: '@electron-forge/maker-zip',
       config: {},
-      platforms: ['darwin', 'win32'],
+      platforms: ['darwin'],
+    },
+    {
+      name: '@electron-forge/maker-squirrel',
+      config: {
+        name: 'InkPost',
+        setupIcon: './assets/icon.ico',
+      },
     },
     {
       name: '@electron-forge/maker-deb',
-      config: {},
+      config: {
+        options: {
+          categories: ['Office', 'TextEditor'],
+          section: 'editors',
+        },
+      },
+    },
+  ],
+  publishers: [
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: {
+          owner: 'zhexuany',
+          name: 'inkpost',
+        },
+        prerelease: true,
+      },
     },
   ],
   hooks: {
