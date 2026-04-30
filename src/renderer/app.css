@@ -254,7 +254,8 @@ body {
 .css-editor {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .css-editor-header {
@@ -270,8 +271,8 @@ body {
 }
 
 .cm-editor-wrapper {
-  width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .cm-editor-wrapper .cm-editor {
