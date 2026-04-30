@@ -25,6 +25,8 @@ const api = {
     ipcRenderer.invoke('file:save', { filePath, content }),
   saveFileAs: (content: string) => ipcRenderer.invoke('file:saveAs', content),
   readFile: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
+  pasteImage: (buffer: number[], fileDir?: string): Promise<string> =>
+    ipcRenderer.invoke('file:pasteImage', { buffer, fileDir }),
 
   // Events
   onFileOpened: (callback: (data: { path: string; content: string }) => void) => {

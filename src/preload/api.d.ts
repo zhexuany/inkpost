@@ -22,6 +22,7 @@ export interface InkPostAPI {
   saveFile: (filePath: string, content: string) => Promise<boolean>;
   saveFileAs: (content: string) => Promise<string | null>;
   readFile: (filePath: string) => Promise<string>;
+  pasteImage: (buffer: number[], fileDir?: string) => Promise<string>;
 
   // Events
   onFileOpened: (callback: (data: { path: string; content: string }) => void) => void;

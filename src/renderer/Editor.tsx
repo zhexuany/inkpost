@@ -27,10 +27,11 @@ interface EditorProps {
   onTopLineChange?: (line: number) => void;
   targetScrollLine?: number;
   lang?: string;
+  fileDir?: string;
 }
 
 const Editor = forwardRef<EditorHandle, EditorProps>(
-  ({ value, onChange, onTopLineChange, targetScrollLine, lang }, ref) => {
+  ({ value, onChange, onTopLineChange, targetScrollLine, lang, fileDir }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const isSyncingScroll = useRef(false);
@@ -109,6 +110,43 @@ const Editor = forwardRef<EditorHandle, EditorProps>(
         },
       });
 
+      const pasteListener = EditorView.domEventHandlers({
+        paste(event, view) {
+          const items = event.clipboardData?.items;
+          if (!items) return false;
+
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.type.startsWith('image/')) {
+              event.preventDefault();
+              const blob = item.getAsFile();
+              if (!blob) continue;
+
+              const reader = new FileReader();
+              reader.onload = async () => {
+                const buffer = new Uint8Array(reader.result as ArrayBuffer);
+                try {
+                  const filePath = await window.inkpost.pasteImage(
+                    Array.from(buffer),
+                    fileDir,
+                  );
+                  const pos = view.state.selection.main.from;
+                  const filename = filePath.split(/[/\\]/).pop() ?? 'image';
+                  view.dispatch({
+                    changes: { from: pos, insert: `![${filename}](${filePath})\n` },
+                  });
+                } catch (err) {
+                  console.error('Image paste failed:', err);
+                }
+              };
+              reader.readAsArrayBuffer(blob);
+              return true;
+            }
+          }
+          return false;
+        },
+      });
+
       const state = EditorState.create({
         doc: value,
         extensions: [
@@ -136,6 +174,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(
           phrasesCompartment.current.of(EditorState.phrases.of(getPhrases())),
           updateListener,
           scrollListener,
+          pasteListener,
           EditorView.theme({
             '&': { height: '100%', fontSize: '14px' },
             '.cm-scroller': { overflow: 'auto', fontFamily: '"SF Mono", Menlo, Consolas, monospace' },

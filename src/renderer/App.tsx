@@ -375,7 +375,7 @@ export default function App() {
 
       <div className="main-area">
         <div className="editor-pane">
-          <Editor ref={editorRef} value={markdown} onChange={setMarkdown} onTopLineChange={onEditorScroll} lang={lang} />
+          <Editor ref={editorRef} value={markdown} onChange={setMarkdown} onTopLineChange={onEditorScroll} lang={lang} fileDir={currentFilePath ? currentFilePath.replace(/\/[^/]+$/, '') : undefined} />
         </div>
 
         {showCssPanel && (

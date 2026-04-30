@@ -177,6 +177,15 @@ ipcMain.handle('file:read', async (_event, filePath: string) => {
   return fs.readFileSync(filePath, 'utf-8');
 });
 
+ipcMain.handle('file:pasteImage', async (_event, args: { buffer: number[]; fileDir?: string }) => {
+  const buf = Buffer.from(args.buffer);
+  const dir = args.fileDir || app.getPath('pictures');
+  const filename = `img_${Date.now()}.png`;
+  const filepath = path.join(dir, filename);
+  fs.writeFileSync(filepath, buf);
+  return filepath;
+});
+
 // --- IPC: Store — themes ---
 
 ipcMain.handle('store:getThemes', () => {
