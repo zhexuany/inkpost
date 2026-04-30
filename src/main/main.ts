@@ -211,6 +211,65 @@ ipcMain.handle('store:deleteTheme', (_event, id: string) => {
   }
 });
 
+// --- IPC: Theme management ---
+
+ipcMain.handle('theme:create', async (_event, name: string) => {
+  const id = Date.now().toString();
+  const theme: import('../shared/types').InkPostTheme = {
+    id,
+    name,
+    css: defaultTheme.css,
+    isBuiltIn: false,
+  };
+  const themes = store.get('themes', []);
+  themes.push(theme);
+  store.set('themes', themes);
+  return theme;
+});
+
+ipcMain.handle('theme:rename', async (_event, args: { id: string; name: string }) => {
+  const themes = store.get('themes', []);
+  const idx = themes.findIndex(t => t.id === args.id);
+  if (idx < 0) return;
+  themes[idx].name = args.name;
+  store.set('themes', themes);
+});
+
+ipcMain.handle('theme:resetPreset', async (_event, id: string) => {
+  const preset = presetThemes.find(t => t.id === id);
+  if (!preset) return;
+  const themes = store.get('themes', []);
+  const idx = themes.findIndex(t => t.id === id);
+  if (idx >= 0) {
+    themes.splice(idx, 1); // Remove custom override, fall back to preset
+  }
+  store.set('themes', themes);
+});
+
+ipcMain.handle('theme:importCss', async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: 'CSS', extensions: ['css'] }],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  const filePath = result.filePaths[0];
+  const css = fs.readFileSync(filePath, 'utf-8');
+  const name = path.basename(filePath, '.css');
+  return { name, css };
+});
+
+ipcMain.handle('theme:exportCss', async (_event, args: { name: string; css: string }) => {
+  if (!mainWindow) return false;
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: `${args.name}.css`,
+    filters: [{ name: 'CSS', extensions: ['css'] }],
+  });
+  if (result.canceled || !result.filePath) return false;
+  fs.writeFileSync(result.filePath, args.css, 'utf-8');
+  return true;
+});
+
 // --- IPC: Store — files ---
 
 ipcMain.handle('store:getRecentFiles', () => {

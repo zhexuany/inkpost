@@ -3,6 +3,7 @@ import Editor, { type EditorHandle } from './Editor';
 import Preview, { type PreviewHandle } from './Preview';
 import CssEditor from './CssEditor';
 import StatusBar from './StatusBar';
+import ThemeManager from './ThemeManager';
 import { presetThemes } from '../shared/presets';
 import { scanCSS, type CSSWarning } from '../shared/css-scanner';
 import type { RenderResult, InkPostTheme } from '../shared/types';
@@ -218,6 +219,14 @@ export default function App() {
     try { await window.inkpost.setActiveThemeId(id); } catch {}
   }, []);
 
+  const reloadThemes = useCallback(async () => {
+    const savedThemes = await window.inkpost.getThemes();
+    const savedId = await window.inkpost.getActiveThemeId();
+    const customThemes = savedThemes.filter(t => !presetThemes.some(p => p.id === t.id));
+    setThemes([...presetThemes, ...customThemes]);
+    setActiveThemeId(savedId);
+  }, []);
+
   const handleCssChange = useCallback((css: string) => {
     setThemes(prev => prev.map(t => t.id === activeThemeId ? { ...t, css } : t));
   }, [activeThemeId]);
@@ -312,14 +321,12 @@ export default function App() {
           </span>
         </div>
         <div className="toolbar-right">
-          <select
-            value={activeThemeId}
-            onChange={(e) => handleThemeChange(e.target.value)}
-          >
-            {themes.map(th => (
-              <option key={th.id} value={th.id}>{th.name}</option>
-            ))}
-          </select>
+          <ThemeManager
+            themes={themes}
+            activeThemeId={activeThemeId}
+            onSwitchTheme={handleThemeChange}
+            onThemesChanged={reloadThemes}
+          />
           <button onClick={() => setShowCssPanel(!showCssPanel)}>
             {showCssPanel ? t('toolbar.hideStyle') : t('toolbar.editStyle')}
           </button>

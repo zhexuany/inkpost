@@ -33,6 +33,13 @@ export interface InkPostAPI {
   saveTheme: (theme: InkPostTheme) => Promise<void>;
   deleteTheme: (id: string) => Promise<void>;
 
+  // Theme management
+  createTheme: (name: string) => Promise<InkPostTheme>;
+  renameTheme: (id: string, name: string) => Promise<void>;
+  resetPresetTheme: (id: string) => Promise<void>;
+  importCss: () => Promise<{ name: string; css: string } | null>;
+  exportCss: (name: string, css: string) => Promise<boolean>;
+
   // Store — files
   getRecentFiles: () => Promise<string[]>;
   addRecentFile: (filePath: string) => Promise<void>;

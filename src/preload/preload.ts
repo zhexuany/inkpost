@@ -38,6 +38,13 @@ const api = {
   saveTheme: (theme: InkPostTheme): Promise<void> => ipcRenderer.invoke('store:saveTheme', theme),
   deleteTheme: (id: string): Promise<void> => ipcRenderer.invoke('store:deleteTheme', id),
 
+  // Theme management
+  createTheme: (name: string): Promise<InkPostTheme> => ipcRenderer.invoke('theme:create', name),
+  renameTheme: (id: string, name: string): Promise<void> => ipcRenderer.invoke('theme:rename', { id, name }),
+  resetPresetTheme: (id: string): Promise<void> => ipcRenderer.invoke('theme:resetPreset', id),
+  importCss: (): Promise<{ name: string; css: string } | null> => ipcRenderer.invoke('theme:importCss'),
+  exportCss: (name: string, css: string): Promise<boolean> => ipcRenderer.invoke('theme:exportCss', { name, css }),
+
   // Store — files
   getRecentFiles: (): Promise<string[]> => ipcRenderer.invoke('store:getRecentFiles'),
   addRecentFile: (filePath: string): Promise<void> => ipcRenderer.invoke('store:addRecentFile', filePath),
