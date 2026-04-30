@@ -1,4 +1,3 @@
-import path from 'path';
 import type { Configuration } from 'webpack';
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -31,11 +30,6 @@ const config: Configuration = {
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.js', '.jsx'],
-    alias: {
-      '@main': path.resolve(__dirname, 'src/main'),
-      '@renderer': path.resolve(__dirname, 'src/renderer'),
-      '@shared': path.resolve(__dirname, 'src/shared'),
-    },
   },
   optimization: {
     minimize: isProd,
