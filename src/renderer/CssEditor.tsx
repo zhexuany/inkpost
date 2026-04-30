@@ -7,6 +7,7 @@ import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { localizeSearchPanel } from './searchI18n';
 
 interface CssEditorProps {
   css: string;
@@ -62,7 +63,10 @@ export default function CssEditor({ css, onChange }: CssEditorProps) {
     const view = new EditorView({ state, parent: containerRef.current });
     viewRef.current = view;
 
+    const stopI18n = localizeSearchPanel(view);
+
     return () => {
+      stopI18n();
       view.destroy();
       viewRef.current = null;
     };
