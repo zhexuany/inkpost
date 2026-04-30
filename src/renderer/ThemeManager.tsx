@@ -8,6 +8,16 @@ interface ThemeManagerProps {
   onThemesChanged: () => void;
 }
 
+type DialogAction = 'new' | 'copy' | 'rename' | 'delete' | 'reset';
+
+interface DialogState {
+  type: 'input' | 'confirm';
+  title: string;
+  message?: string;
+  defaultValue?: string;
+  action: DialogAction;
+}
+
 export default function ThemeManager({
   themes,
   activeThemeId,
@@ -15,15 +25,14 @@ export default function ThemeManager({
   onThemesChanged,
 }: ThemeManagerProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [inputValue, setInputValue] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
-        setRenamingId(null);
       }
     };
     if (menuOpen) document.addEventListener('mousedown', handler);
@@ -32,24 +41,46 @@ export default function ThemeManager({
 
   const activeTheme = themes.find(t => t.id === activeThemeId);
 
-  const handleNew = async () => {
-    setMenuOpen(false);
-    const name = window.prompt('主题名称：');
-    if (!name?.trim()) return;
-    const theme = await window.inkpost.createTheme(name.trim());
+  const doCreateWithCss = async (name: string, css: string) => {
+    const theme = await window.inkpost.createTheme(name);
+    await window.inkpost.saveTheme({ ...theme, css });
     await window.inkpost.setActiveThemeId(theme.id);
     onThemesChanged();
   };
 
-  const handleCopy = async () => {
+  const openInput = (action: DialogAction, title: string, defaultValue: string) => {
+    setInputValue(defaultValue);
+    setDialog({ type: 'input', title, defaultValue, action });
+  };
+
+  const openConfirm = (action: DialogAction, title: string, message: string) => {
+    setDialog({ type: 'confirm', title, message, action });
+  };
+
+  const handleDialogSubmit = async () => {
+    if (!dialog || !activeTheme) return;
+
+    if (dialog.type === 'input') {
+      const name = inputValue.trim();
+      if (!name) return;
+
+      if (dialog.action === 'new') {
+        const theme = await window.inkpost.createTheme(name);
+        await window.inkpost.setActiveThemeId(theme.id);
+      } else if (dialog.action === 'copy') {
+        await doCreateWithCss(name, activeTheme.css);
+      } else if (dialog.action === 'rename') {
+        await window.inkpost.renameTheme(activeTheme.id, name);
+      }
+    } else {
+      if (dialog.action === 'delete') {
+        await window.inkpost.deleteTheme(activeTheme.id);
+      } else if (dialog.action === 'reset') {
+        await window.inkpost.resetPresetTheme(activeTheme.id);
+      }
+    }
+    setDialog(null);
     setMenuOpen(false);
-    if (!activeTheme) return;
-    const name = window.prompt('副本名称：', `${activeTheme.name} 副本`);
-    if (!name?.trim()) return;
-    const theme = await window.inkpost.createTheme(name.trim());
-    const saved = { ...theme, css: activeTheme.css };
-    await window.inkpost.saveTheme(saved);
-    await window.inkpost.setActiveThemeId(saved.id);
     onThemesChanged();
   };
 
@@ -57,49 +88,13 @@ export default function ThemeManager({
     setMenuOpen(false);
     const result = await window.inkpost.importCss();
     if (!result) return;
-    const theme = await window.inkpost.createTheme(result.name);
-    const saved = { ...theme, css: result.css };
-    await window.inkpost.saveTheme(saved);
-    await window.inkpost.setActiveThemeId(saved.id);
-    onThemesChanged();
+    await doCreateWithCss(result.name, result.css);
   };
 
   const handleExport = async () => {
     setMenuOpen(false);
     if (!activeTheme) return;
     await window.inkpost.exportCss(activeTheme.name, activeTheme.css);
-  };
-
-  const handleRenameStart = () => {
-    if (!activeTheme?.isBuiltIn) {
-      setRenamingId(activeThemeId);
-      setRenameValue(activeTheme?.name ?? '');
-    }
-  };
-
-  const handleRenameSubmit = async () => {
-    const name = renameValue.trim();
-    if (name && renamingId) {
-      await window.inkpost.renameTheme(renamingId, name);
-      onThemesChanged();
-    }
-    setRenamingId(null);
-  };
-
-  const handleDelete = async () => {
-    setMenuOpen(false);
-    if (!activeTheme || activeTheme.isBuiltIn) return;
-    if (!window.confirm(`确定删除主题 "${activeTheme.name}"？`)) return;
-    await window.inkpost.deleteTheme(activeTheme.id);
-    onThemesChanged();
-  };
-
-  const handleReset = async () => {
-    setMenuOpen(false);
-    if (!activeTheme?.isBuiltIn) return;
-    if (!window.confirm(`确定恢复 "${activeTheme.name}" 为默认样式？你的修改将丢失。`)) return;
-    await window.inkpost.resetPresetTheme(activeTheme.id);
-    onThemesChanged();
   };
 
   return (
@@ -125,39 +120,46 @@ export default function ThemeManager({
 
       {menuOpen && (
         <div className="theme-menu">
-          <button onClick={handleNew}>新建主题</button>
-          <button onClick={handleCopy}>复制当前主题</button>
+          <button onClick={() => openInput('new', '新建主题', '')}>新建主题</button>
+          <button onClick={() => openInput('copy', '复制主题', `${activeTheme?.name ?? ''} 副本`)}>复制当前主题</button>
           <div className="theme-menu-sep" />
           <button onClick={handleImport}>导入 CSS 文件</button>
           <button onClick={handleExport}>导出 CSS 文件</button>
           <div className="theme-menu-sep" />
           {activeTheme && !activeTheme.isBuiltIn && (
             <>
-              <button onClick={handleRenameStart}>重命名</button>
-              <button onClick={handleDelete} className="danger">删除</button>
+              <button onClick={() => openInput('rename', '重命名主题', activeTheme.name)}>重命名</button>
+              <button onClick={() => openConfirm('delete', '删除主题', `确定删除主题 "${activeTheme.name}"？此操作不可撤销。`)} className="danger">删除</button>
             </>
           )}
           {activeTheme?.isBuiltIn && (
-            <button onClick={handleReset}>恢复默认样式</button>
+            <button onClick={() => openConfirm('reset', '恢复默认样式', `确定恢复 "${activeTheme.name}" 为默认样式？你的修改将丢失。`)}>恢复默认样式</button>
           )}
         </div>
       )}
 
-      {renamingId && (
-        <div className="modal-overlay" onClick={() => setRenamingId(null)}>
+      {dialog && (
+        <div className="modal-overlay" onClick={() => setDialog(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">重命名主题</div>
+            <div className="modal-header">{dialog.title}</div>
             <div className="modal-body">
-              <input
-                autoFocus
-                value={renameValue}
-                onChange={e => setRenameValue(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleRenameSubmit()}
-              />
+              {dialog.type === 'confirm' ? (
+                <p style={{ margin: 0 }}>{dialog.message}</p>
+              ) : (
+                <input
+                  autoFocus
+                  value={inputValue}
+                  onChange={e => setInputValue(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleDialogSubmit()}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', fontSize: '14px' }}
+                />
+              )}
             </div>
             <div className="modal-footer">
-              <button onClick={() => setRenamingId(null)}>取消</button>
-              <button className="confirm" onClick={handleRenameSubmit}>确定</button>
+              <button onClick={() => setDialog(null)}>取消</button>
+              <button className="confirm" onClick={handleDialogSubmit}>
+                {dialog.action === 'delete' ? '删除' : dialog.action === 'reset' ? '恢复' : '确定'}
+              </button>
             </div>
           </div>
         </div>
