@@ -33,6 +33,9 @@ export const zh: Record<string, string> = {
   // Theme
   'theme.newTheme': '新建主题',
 
+  // Content history
+  'history.title': '历史',
+
   // Editor
   'editor.placeholder': '开始编写 Markdown...',
 };

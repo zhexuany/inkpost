@@ -33,6 +33,9 @@ export const en: Record<string, string> = {
   // Theme
   'theme.newTheme': 'New Theme',
 
+  // Content history
+  'history.title': 'History',
+
   // Editor
   'editor.placeholder': 'Start writing Markdown...',
 };

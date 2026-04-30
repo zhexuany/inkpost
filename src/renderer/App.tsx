@@ -353,7 +353,7 @@ export default function App() {
           {contentHistory.length > 0 && (
             <div className="recent-wrapper">
               <button onClick={() => setShowContentHistory(!showContentHistory)}>
-                历史
+                {t('history.title')}
               </button>
               {showContentHistory && (
                 <div className="recent-menu">
