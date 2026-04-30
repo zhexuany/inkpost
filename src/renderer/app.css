@@ -136,6 +136,21 @@ body {
   margin: 4px 0;
 }
 
+.warn-badge {
+  display: inline-block;
+  background: #FF6600;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 8px;
+  margin-left: 4px;
+  padding: 0 4px;
+}
+
 .copy-btn {
   background: #0066CC !important;
   color: #fff !important;

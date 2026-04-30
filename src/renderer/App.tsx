@@ -343,6 +343,9 @@ export default function App() {
           />
           <button onClick={() => setShowCssPanel(!showCssPanel)}>
             {showCssPanel ? t('toolbar.hideStyle') : t('toolbar.editStyle')}
+            {cssWarnings.length > 0 && (
+              <span className="warn-badge">{cssWarnings.length}</span>
+            )}
           </button>
           <button className="copy-btn" onClick={handleCopyClick} title="Ctrl+Shift+C">
             {t('toolbar.copy')}
