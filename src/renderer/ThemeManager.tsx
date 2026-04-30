@@ -129,39 +129,32 @@ export default function ThemeManager({
           {activeTheme && !activeTheme.isBuiltIn && (
             <>
               <button onClick={() => openInput('rename', '重命名主题', activeTheme.name)}>重命名</button>
-              <div className="theme-menu-sep" />
-              <button onClick={() => openConfirm('delete', '删除主题', `确定删除主题 "${activeTheme.name}"？此操作不可撤销。`)} className="danger">删除主题</button>
+              <button onClick={() => openConfirm('delete', '删除主题', `确定删除主题 "${activeTheme.name}"？此操作不可撤销。`)} className="danger">删除</button>
             </>
           )}
           {activeTheme?.isBuiltIn && (
-            <>
-              <div className="theme-menu-sep" />
-              <button onClick={() => openConfirm('reset', '恢复默认样式', `确定恢复 "${activeTheme.name}" 为默认样式？你的修改将丢失。`)}>恢复默认样式</button>
-            </>
+            <button onClick={() => openConfirm('reset', '恢复默认样式', `确定恢复 "${activeTheme.name}" 为默认样式？你的修改将丢失。`)}>恢复默认样式</button>
           )}
         </div>
       )}
 
       {dialog && (
         <div className="modal-overlay" onClick={() => setDialog(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal modal-sm" onClick={e => e.stopPropagation()}>
             <div className="modal-header">{dialog.title}</div>
             <div className="modal-body">
               {dialog.type === 'confirm' ? (
                 <p style={{ margin: 0 }}>{dialog.message}</p>
               ) : (
-                <input
-                  autoFocus
-                  value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleDialogSubmit()}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', fontSize: '14px' }}
-                />
+                <input autoFocus value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleDialogSubmit()} />
               )}
             </div>
             <div className="modal-footer">
               <button onClick={() => setDialog(null)}>取消</button>
-              <button className="confirm" onClick={handleDialogSubmit}>
+              <button
+                className={dialog.action === 'delete' ? 'danger' : 'confirm'}
+                onClick={handleDialogSubmit}
+              >
                 {dialog.action === 'delete' ? '删除' : dialog.action === 'reset' ? '恢复' : '确定'}
               </button>
             </div>
