@@ -223,6 +223,7 @@ export default function App() {
   }, []);
 
   const handleOpenRecent = useCallback(async (filePath: string) => {
+    setShowRecentMenu(false);
     try {
       const content = await window.inkpost.readFile(filePath);
       setMarkdown(content);
@@ -230,7 +231,6 @@ export default function App() {
       await window.inkpost.addRecentFile(filePath);
       const files = await window.inkpost.getRecentFiles();
       setRecentFiles(files);
-      setShowRecentMenu(false);
     } catch { /* file may have been deleted */ }
   }, []);
 
