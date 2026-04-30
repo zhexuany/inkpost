@@ -60,9 +60,10 @@ const sanitizeSchema = {
  * "::: block-1" -> ":::block-1" (removes space after opening :::, closing ::: unchanged)
  */
 export function normalizeContainerSyntax(md: string): string {
-  // Remove space after opening :::name, but skip closing ::: (no name)
-  // [^\s:] excludes colons so ":::\n\n:::block" won't match across containers
-  return md.replace(/^:::\s+([^\s:]+)/gm, ':::$1');
+  // Remove space after opening :::name.
+  // Use [ \t] (not \s) to stay on the same line — \s matches \n and would
+  // cross line boundaries, gobbling up blank lines and merging adjacent text.
+  return md.replace(/^:::[ \t]+([^\s:]+)/gm, ':::$1');
 }
 
 export function createProcessor(mathRenderer?: MathRenderer) {
