@@ -9,8 +9,12 @@ export type { EditorAPI, PreviewAPI, ScrollMap };
  * Coordinates bidirectional scroll sync between editor and preview.
  *
  * Uses a syncing lock to prevent infinite loops. Scroll events are
- * throttled via requestAnimationFrame. Listeners are attached lazily
- * — the preview scroll element may not exist until the iframe is populated.
+ * throttled via requestAnimationFrame.
+ *
+ * IMPORTANT: the preview lives in an iframe. The scrollable element is
+ * `documentElement` (for reading/setting scrollTop), but the `scroll`
+ * event fires on `document`. We must listen on `document`, not the
+ * scrolling element itself.
  */
 export class ScrollSyncManager {
   private editor: EditorAPI;
@@ -18,10 +22,11 @@ export class ScrollSyncManager {
   private syncing = false;
   private enabled = false;
   private scrollMap: ScrollMap = [];
+
+  // Cached DOM references for change detection
   private editorScrollEl: HTMLElement | null = null;
-  private previewScrollEl: HTMLElement | null = null;
-  private editorListenerAttached = false;
-  private previewListenerAttached = false;
+  private previewScrollEl: HTMLElement | null = null;   // scrollTop target
+  private previewDoc: Document | null = null;             // scroll event target
 
   private handleEditorScroll: () => void;
   private handlePreviewScroll: () => void;
@@ -37,43 +42,65 @@ export class ScrollSyncManager {
   enable(): void {
     if (this.enabled) return;
     this.enabled = true;
-    this.attachListeners();
-    this.refresh();
+    this.ensureListeners();
+    this.rebuildScrollMap();
   }
 
   disable(): void {
     if (!this.enabled) return;
     this.enabled = false;
-    this.detachListeners();
+    this.removeAllListeners();
+    this.scrollMap = [];
   }
 
-  /** Rebuild the ScrollMap from the preview DOM. Also re-attaches listeners if the
-   *  preview DOM element was replaced (e.g., iframe doc.write creates a new document). */
+  /** Rebuild ScrollMap and re-attach listeners if DOM was replaced (e.g. iframe doc.write). */
   refresh(): void {
     if (!this.enabled) return;
+    this.ensureListeners();
+    this.rebuildScrollMap();
+  }
 
-    const previewEl = this.preview.getScrollElement();
+  // ---- Internal ----
 
-    // Preview document may have been replaced (iframe doc.write destroys old document).
-    // Detach from old element and attach to new one when the reference changes.
-    if (previewEl && previewEl !== this.previewScrollEl) {
-      if (this.previewScrollEl && this.previewListenerAttached) {
-        this.previewScrollEl.removeEventListener('scroll', this.handlePreviewScroll);
-      }
-      this.previewScrollEl = previewEl;
-      this.previewScrollEl.addEventListener('scroll', this.handlePreviewScroll, { passive: true });
-      this.previewListenerAttached = true;
-    }
-
-    // Editor listener — still lazy one-shot
-    if (!this.editorListenerAttached) {
-      this.editorScrollEl = this.editor.getScrollElement();
+  private ensureListeners(): void {
+    // --- Editor ---
+    const editorEl = this.editor.getScrollElement();
+    if (editorEl && editorEl !== this.editorScrollEl) {
       if (this.editorScrollEl) {
-        this.editorScrollEl.addEventListener('scroll', this.handleEditorScroll, { passive: true });
-        this.editorListenerAttached = true;
+        this.editorScrollEl.removeEventListener('scroll', this.handleEditorScroll);
       }
+      this.editorScrollEl = editorEl;
+      this.editorScrollEl.addEventListener('scroll', this.handleEditorScroll, { passive: true });
+    } else if (!this.editorScrollEl && editorEl) {
+      this.editorScrollEl = editorEl;
+      this.editorScrollEl.addEventListener('scroll', this.handleEditorScroll, { passive: true });
     }
 
+    // --- Preview ---
+    const previewEl = this.preview.getScrollElement();     // documentElement — for scrollTop
+    const previewDoc = previewEl?.ownerDocument ?? null;    // document — for scroll events
+
+    if (previewDoc && previewDoc !== this.previewDoc) {
+      // Document was replaced (iframe doc.write). Remove old listener, attach to new.
+      if (this.previewDoc) {
+        this.previewDoc.removeEventListener('scroll', this.handlePreviewScroll);
+      }
+      this.previewDoc = previewDoc;
+      this.previewDoc.addEventListener('scroll', this.handlePreviewScroll, { passive: true });
+      this.previewScrollEl = previewEl;
+    } else if (!this.previewDoc && previewDoc) {
+      // First time
+      this.previewDoc = previewDoc;
+      this.previewDoc.addEventListener('scroll', this.handlePreviewScroll, { passive: true });
+      this.previewScrollEl = previewEl;
+    } else if (previewEl && previewEl !== this.previewScrollEl) {
+      // documentElement changed but document is the same (shouldn't normally happen)
+      this.previewScrollEl = previewEl;
+    }
+  }
+
+  private rebuildScrollMap(): void {
+    const previewEl = this.preview.getScrollElement();
     if (!previewEl) {
       this.scrollMap = [];
       return;
@@ -81,35 +108,16 @@ export class ScrollSyncManager {
     this.scrollMap = buildScrollMap(previewEl);
   }
 
-  private attachListeners(): void {
-    // Editor listener (usually ready immediately)
-    if (!this.editorListenerAttached) {
-      this.editorScrollEl = this.editor.getScrollElement();
-      if (this.editorScrollEl) {
-        this.editorScrollEl.addEventListener('scroll', this.handleEditorScroll, { passive: true });
-        this.editorListenerAttached = true;
-      }
-    }
-
-    // Preview listener (may need retry — iframe not populated yet)
-    if (!this.previewListenerAttached) {
-      this.previewScrollEl = this.preview.getScrollElement();
-      if (this.previewScrollEl) {
-        this.previewScrollEl.addEventListener('scroll', this.handlePreviewScroll, { passive: true });
-        this.previewListenerAttached = true;
-      }
-    }
-  }
-
-  private detachListeners(): void {
-    if (this.editorScrollEl && this.editorListenerAttached) {
+  private removeAllListeners(): void {
+    if (this.editorScrollEl) {
       this.editorScrollEl.removeEventListener('scroll', this.handleEditorScroll);
-      this.editorListenerAttached = false;
+      this.editorScrollEl = null;
     }
-    if (this.previewScrollEl && this.previewListenerAttached) {
-      this.previewScrollEl.removeEventListener('scroll', this.handlePreviewScroll);
-      this.previewListenerAttached = false;
+    if (this.previewDoc) {
+      this.previewDoc.removeEventListener('scroll', this.handlePreviewScroll);
+      this.previewDoc = null;
     }
+    this.previewScrollEl = null;
   }
 
   // ---- Sync logic ----
@@ -122,7 +130,7 @@ export class ScrollSyncManager {
 
     try {
       const editorLine = this.editor.getTopVisibleLine(); // 0-based
-      const sourceLine = editorLine + 1; // convert to 1-based for ScrollMap
+      const sourceLine = editorLine + 1;
       const item = findNearestItemBySourceLine(this.scrollMap, sourceLine);
       if (!item) return;
 
@@ -165,7 +173,6 @@ export class ScrollSyncManager {
         item.sourceStartLine +
         clampedProgress * Math.max(1, item.sourceEndLine - item.sourceStartLine);
 
-      // Convert 1-based source line to 0-based editor line
       this.editor.scrollToLine(Math.round(sourceLine) - 1);
     } finally {
       requestAnimationFrame(() => {
