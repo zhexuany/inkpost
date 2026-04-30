@@ -47,14 +47,33 @@ export class ScrollSyncManager {
     this.detachListeners();
   }
 
-  /** Rebuild the ScrollMap from the preview DOM. Also ensures listeners are attached. */
+  /** Rebuild the ScrollMap from the preview DOM. Also re-attaches listeners if the
+   *  preview DOM element was replaced (e.g., iframe doc.write creates a new document). */
   refresh(): void {
     if (!this.enabled) return;
 
-    // Lazy-attach listeners in case preview element wasn't ready at enable() time
-    this.attachListeners();
-
     const previewEl = this.preview.getScrollElement();
+
+    // Preview document may have been replaced (iframe doc.write destroys old document).
+    // Detach from old element and attach to new one when the reference changes.
+    if (previewEl && previewEl !== this.previewScrollEl) {
+      if (this.previewScrollEl && this.previewListenerAttached) {
+        this.previewScrollEl.removeEventListener('scroll', this.handlePreviewScroll);
+      }
+      this.previewScrollEl = previewEl;
+      this.previewScrollEl.addEventListener('scroll', this.handlePreviewScroll, { passive: true });
+      this.previewListenerAttached = true;
+    }
+
+    // Editor listener — still lazy one-shot
+    if (!this.editorListenerAttached) {
+      this.editorScrollEl = this.editor.getScrollElement();
+      if (this.editorScrollEl) {
+        this.editorScrollEl.addEventListener('scroll', this.handleEditorScroll, { passive: true });
+        this.editorListenerAttached = true;
+      }
+    }
+
     if (!previewEl) {
       this.scrollMap = [];
       return;
