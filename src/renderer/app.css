@@ -273,6 +273,8 @@ body {
 .cm-editor-wrapper {
   flex: 1;
   min-height: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .cm-editor-wrapper .cm-editor {
@@ -307,6 +309,7 @@ body {
   font-size: 13px;
   font-family: "SF Mono", Menlo, Consolas, monospace;
   outline: none;
+  max-width: 220px;
 }
 
 .cm-panel.cm-search .cm-textfield:focus {
