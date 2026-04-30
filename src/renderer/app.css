@@ -254,21 +254,6 @@ body {
   align-items: center;
 }
 
-.md-textarea {
-  width: 100%;
-  height: 100%;
-  padding: 16px;
-  border: none;
-  outline: none;
-  resize: none;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #333;
-  background: #fff;
-  tab-size: 2;
-}
-
 .cm-editor-wrapper {
   width: 100%;
   height: 100%;
@@ -276,21 +261,6 @@ body {
 
 .cm-editor-wrapper .cm-editor {
   height: 100%;
-}
-
-.css-textarea {
-  flex: 1;
-  min-height: 0;
-  padding: 8px 12px;
-  border: none;
-  outline: none;
-  resize: none;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #333;
-  background: #fff;
-  tab-size: 2;
 }
 
 .preview-iframe {
