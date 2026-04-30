@@ -8,7 +8,7 @@ import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { rafThrottle } from './scroll-sync/rafThrottle';
-import { zhPhrases } from './cmPhrases';
+import { getPhrases } from './cmPhrases';
 
 export interface EditorHandle {
   /** Get the 0-based line number of the first visible line in the viewport */
@@ -131,7 +131,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(
             indentWithTab,
           ]),
           oneDark,
-          EditorState.phrases.of(zhPhrases),
+          EditorState.phrases.of(getPhrases()),
           updateListener,
           scrollListener,
           EditorView.theme({

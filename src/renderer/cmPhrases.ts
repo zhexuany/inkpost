@@ -1,8 +1,6 @@
-/**
- * Chinese translations for CodeMirror built-in UI strings.
- * Applied via EditorState.phrases.of(zhPhrases) in editor extensions.
- */
-export const zhPhrases: Record<string, string> = {
+import { getLang } from '../shared/i18n';
+
+const zh: Record<string, string> = {
   // @codemirror/search
   'Find': '查找',
   'Replace': '替换',
@@ -18,7 +16,16 @@ export const zhPhrases: Record<string, string> = {
   'current match': '当前匹配',
   'on line': '行',
 
-  // @codemirror/view — undo/redo tooltips
+  // @codemirror/view
   'Undo': '撤销',
   'Redo': '重做',
 };
+
+/**
+ * Return CodeMirror phrases for the current app language.
+ * English is the CM default, so we return nothing.
+ */
+export function getPhrases(): Record<string, string> {
+  if (getLang() === 'zh') return zh;
+  return {};
+}
